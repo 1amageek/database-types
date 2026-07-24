@@ -164,4 +164,34 @@ struct ExactDecimalTests {
             _ = try large.decimalLexicalForm(maximumUTF8Count: 130)
         }
     }
+
+    @Test func zeroOrdersBelowEveryPositiveFractionAndAboveEveryNegative() {
+        let zero = ExactDecimal(coefficient: 0, scale: 0)
+        let halves = [
+            ExactDecimal(coefficient: 5, scale: 1),      // 0.5
+            ExactDecimal(coefficient: 1, scale: 1),      // 0.1
+            ExactDecimal(coefficient: 1, scale: 30),     // 1e-30
+            ExactDecimal(coefficient: Int128.max, scale: Int32.max),
+        ]
+        for positive in halves {
+            #expect(zero.compare(to: positive) == -1)
+            #expect(positive.compare(to: zero) == 1)
+            #expect(zero < positive)
+            #expect(!(positive < zero))
+        }
+
+        let negatives = [
+            ExactDecimal(coefficient: -5, scale: 1),     // -0.5
+            ExactDecimal(coefficient: -1, scale: 30),    // -1e-30
+            ExactDecimal(coefficient: Int128.min, scale: Int32.min),
+        ]
+        for negative in negatives {
+            #expect(zero.compare(to: negative) == 1)
+            #expect(negative.compare(to: zero) == -1)
+            #expect(negative < zero)
+            #expect(!(zero < negative))
+        }
+
+        #expect(zero.compare(to: zero) == 0)
+    }
 }

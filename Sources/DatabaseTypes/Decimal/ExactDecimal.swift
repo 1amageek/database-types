@@ -207,6 +207,12 @@ public struct ExactDecimal: Sendable, Hashable, Comparable {
 
     public func compare(to other: Self) -> Int {
         if coefficient == other.coefficient, scale == other.scale { return 0 }
+        // Zero is canonically (0, 0), so at most one side is zero here. Order it
+        // directly against the other sign before magnitude comparison, because
+        // `compareMagnitude` derives a leading power from the decimal-digit count
+        // and cannot represent zero's magnitude as smaller than any fraction.
+        if coefficient == 0 { return other.coefficient > 0 ? -1 : 1 }
+        if other.coefficient == 0 { return coefficient > 0 ? 1 : -1 }
         if coefficient < 0, other.coefficient >= 0 { return -1 }
         if coefficient >= 0, other.coefficient < 0 { return 1 }
         let magnitudeComparison = compareMagnitude(to: other)
