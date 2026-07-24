@@ -45,6 +45,11 @@ extension FieldValue: Hashable {
             return left == right
         case (.geographicPoint(let left), .geographicPoint(let right)):
             return left == right
+        case (
+            .geographicPosition(let left),
+            .geographicPosition(let right)
+        ):
+            return left == right
         case (.vector(let left), .vector(let right)):
             return left == right
         case (.uuid(let left), .uuid(let right)):
@@ -129,23 +134,26 @@ extension FieldValue: Hashable {
         case .geographicPoint(let value):
             hasher.combine(21 as UInt8)
             hasher.combine(value)
-        case .vector(let value):
+        case .geographicPosition(let value):
             hasher.combine(22 as UInt8)
             hasher.combine(value)
-        case .uuid(let value):
+        case .vector(let value):
             hasher.combine(23 as UInt8)
             hasher.combine(value)
-        case .array(let values):
+        case .uuid(let value):
             hasher.combine(24 as UInt8)
+            hasher.combine(value)
+        case .array(let values):
+            hasher.combine(25 as UInt8)
             hasher.combine(values)
         case .object(let fields):
-            hasher.combine(25 as UInt8)
+            hasher.combine(26 as UInt8)
             hasher.combine(fields)
         case .reference(let identity):
-            hasher.combine(26 as UInt8)
+            hasher.combine(27 as UInt8)
             hasher.combine(identity)
         case .rdfTerm(let term):
-            hasher.combine(27 as UInt8)
+            hasher.combine(28 as UInt8)
             hasher.combine(term)
         }
     }

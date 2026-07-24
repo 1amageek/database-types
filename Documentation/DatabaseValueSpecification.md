@@ -45,7 +45,7 @@ model-adaptation layer. User models are not required to expose `FieldValue`,
 | Text and bytes | `string`, `bytes` |
 | Civil time | `date`, `time`, `dateTime` |
 | Absolute and relative time | `timestamp`, `timeSpan`, `calendarPeriod` |
-| Specialized scalar | `geographicPoint`, `vector`, `uuid` |
+| Specialized value | `geographicPoint`, `geographicPosition`, `vector`, `uuid` |
 | Structural | `array`, `object`, `reference`, `rdfTerm` |
 
 Numeric widths are part of value identity. `int8(1)`, `int64(1)`, and
@@ -71,6 +71,7 @@ Float identity preserves the IEEE bit pattern.
 | Swift `Duration` | `TimeSpan` | Nearest-even nanosecond rounding |
 | Foundation `DateComponents` | `CalendarPeriod` | Strict year/month/day conversion |
 | Coordinates | `GeographicPoint` | Validated WGS 84 degrees |
+| Three-dimensional position | `GeographicPosition` | WGS 84 ellipsoidal height in meters |
 | Dense numeric vector | `Vector` | Width-preserving retained storage |
 
 ## Temporal model
@@ -142,6 +143,12 @@ normalization, dimension limits, and ANN indexes belong to upper layers.
 `-90...90`, longitude is within `-180...180`, and both values are finite.
 Negative zero is normalized to positive zero. CRS conversion, spatial
 predicates, distance, and indexes belong to upper layers.
+
+`GeographicPosition` combines a `GeographicPoint` with a finite WGS 84
+ellipsoidal height measured in meters. It is distinct from `GeographicPoint`;
+height is not optional and therefore cannot silently change a 2D value into a
+3D value. Orthometric height, mean-sea-level elevation, geoid models, and
+vertical-datum transformation belong to upper geographic layers.
 
 ## Reference ownership
 

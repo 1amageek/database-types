@@ -26,6 +26,7 @@ public indirect enum FieldValue: Sendable {
     case timeSpan(TimeSpan)
     case calendarPeriod(CalendarPeriod)
     case geographicPoint(GeographicPoint)
+    case geographicPosition(GeographicPosition)
     case vector(Vector)
     case uuid(UUID)
     case array([FieldValue])

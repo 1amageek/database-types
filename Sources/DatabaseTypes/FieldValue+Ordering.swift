@@ -53,6 +53,11 @@ extension FieldValue: Comparable {
             return left < right
         case (.geographicPoint(let left), .geographicPoint(let right)):
             return left < right
+        case (
+            .geographicPosition(let left),
+            .geographicPosition(let right)
+        ):
+            return left < right
         case (.vector(let left), .vector(let right)):
             return left < right
         case (.uuid(let left), .uuid(let right)):
@@ -94,12 +99,13 @@ extension FieldValue: Comparable {
         case .timeSpan: return 19
         case .calendarPeriod: return 20
         case .geographicPoint: return 21
-        case .vector: return 22
-        case .uuid: return 23
-        case .array: return 24
-        case .object: return 25
-        case .reference: return 26
-        case .rdfTerm: return 27
+        case .geographicPosition: return 22
+        case .vector: return 23
+        case .uuid: return 24
+        case .array: return 25
+        case .object: return 26
+        case .reference: return 27
+        case .rdfTerm: return 28
         }
     }
 

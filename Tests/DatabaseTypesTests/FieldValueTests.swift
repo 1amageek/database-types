@@ -111,6 +111,11 @@ struct FieldValueTests {
             .geographicPoint(
                 try GeographicPoint(latitude: 0, longitude: 0)
             ),
+            .geographicPosition(try GeographicPosition(
+                latitude: 0,
+                longitude: 0,
+                ellipsoidalHeightInMeters: 0
+            )),
             .vector(try Vector(float32: [1, 2])),
         ]
 
@@ -157,6 +162,11 @@ struct FieldValueTests {
             .geographicPoint(
                 try GeographicPoint(latitude: 1, longitude: 2)
             ),
+            .geographicPosition(try GeographicPosition(
+                latitude: 1,
+                longitude: 2,
+                ellipsoidalHeightInMeters: 3
+            )),
             .vector(try Vector(float32: [1])),
             .uuid(try #require(UUID(
                 canonicalString: "00000000-0000-0000-0000-000000000001"

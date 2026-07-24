@@ -111,6 +111,11 @@ extension FieldValue {
         return value
     }
 
+    public var geographicPositionValue: GeographicPosition? {
+        guard case .geographicPosition(let value) = self else { return nil }
+        return value
+    }
+
     public var vectorValue: Vector? {
         guard case .vector(let value) = self else { return nil }
         return value

@@ -26,7 +26,8 @@ packages.
 - `TimeSpan` and `CalendarPeriod`: distinct fixed and calendar-relative
   amounts.
 - `ExactDecimal`: normalized `Int128` coefficient and `Int32` scale.
-- `UUID`, `GeographicPoint`, and `Vector`: validated specialized scalars.
+- `UUID`, `GeographicPoint`, `GeographicPosition`, and `Vector`: validated
+  specialized values.
 - `ReferenceIdentifier` and `EntityReference`: canonical primitive reference
   components.
 - `ObjectField`: one numbered, named field in a structural value.

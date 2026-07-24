@@ -148,6 +148,41 @@ struct PrimitiveInvariantTests {
         }
     }
 
+    @Test("GeographicPosition preserves finite WGS 84 ellipsoidal height")
+    func geographicPositionValidation() throws {
+        let surface = try GeographicPosition(
+            latitude: 35.681_236,
+            longitude: 139.767_125,
+            ellipsoidalHeightInMeters: -0.0
+        )
+        let elevated = try GeographicPosition(
+            point: surface.point,
+            ellipsoidalHeightInMeters: 10
+        )
+
+        #expect(surface.ellipsoidalHeightInMeters.bitPattern == 0.0.bitPattern)
+        #expect(surface < elevated)
+        #expect(
+            throws: GeographicPositionError.nonFiniteEllipsoidalHeight
+        ) {
+            _ = try GeographicPosition(
+                point: surface.point,
+                ellipsoidalHeightInMeters: .infinity
+            )
+        }
+        #expect(
+            throws: GeographicPositionError.invalidPoint(
+                .latitudeOutOfRange(91)
+            )
+        ) {
+            _ = try GeographicPosition(
+                latitude: 91,
+                longitude: 0,
+                ellipsoidalHeightInMeters: 0
+            )
+        }
+    }
+
     @Test("Vector preserves width and slices retained storage")
     func vectorOwnershipAndIdentity() throws {
         let elements: [Float] = [1, 2, 3, 4]
