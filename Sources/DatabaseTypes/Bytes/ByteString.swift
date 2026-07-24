@@ -22,22 +22,29 @@ public struct ByteString:
 
     private let backing: Backing
     private let visibleRange: Range<Int>
+    /// The logical index of the first visible byte. Slices keep the parent's
+    /// index space so that `SubSequence` indices remain valid in the parent,
+    /// as `Collection` requires.
+    private let indexBase: Int
 
     public init() {
         self.backing = .retainedArray([])
         self.visibleRange = 0..<0
+        self.indexBase = 0
     }
 
     /// Retains the array's copy-on-write storage.
     public init(_ bytes: [UInt8]) {
         self.backing = .retainedArray(bytes)
         self.visibleRange = 0..<bytes.count
+        self.indexBase = 0
     }
 
     /// Retains the slice's copy-on-write storage without materializing bytes.
     public init(_ bytes: ArraySlice<UInt8>) {
         self.backing = .retainedSlice(bytes)
         self.visibleRange = 0..<bytes.count
+        self.indexBase = 0
     }
 
     /// Retains an immutable external owner without copying its bytes.
@@ -45,6 +52,7 @@ public struct ByteString:
         precondition(owner.count >= 0)
         self.backing = .externalOwner(owner)
         self.visibleRange = 0..<owner.count
+        self.indexBase = 0
     }
 
     public init(arrayLiteral elements: UInt8...) {
@@ -53,10 +61,12 @@ public struct ByteString:
 
     private init(
         backing: Backing,
-        visibleRange: Range<Int>
+        visibleRange: Range<Int>,
+        indexBase: Int
     ) {
         self.backing = backing
         self.visibleRange = visibleRange
+        self.indexBase = indexBase
     }
 
     /// Allocates the final byte string storage once.
@@ -111,13 +121,13 @@ public struct ByteString:
         return ByteString(bytes)
     }
 
-    public var startIndex: Int { 0 }
-    public var endIndex: Int { visibleRange.count }
+    public var startIndex: Int { indexBase }
+    public var endIndex: Int { indexBase + visibleRange.count }
 
     public subscript(position: Int) -> UInt8 {
         precondition(indices.contains(position))
         return withUnsafeBytes { bytes in
-            bytes[position]
+            bytes[position - indexBase]
         }
     }
 
@@ -126,11 +136,12 @@ public struct ByteString:
             bounds.lowerBound >= startIndex
                 && bounds.upperBound <= endIndex
         )
+        let lower = visibleRange.lowerBound + (bounds.lowerBound - indexBase)
+        let upper = visibleRange.lowerBound + (bounds.upperBound - indexBase)
         return ByteString(
             backing: backing,
-            visibleRange: (visibleRange.lowerBound + bounds.lowerBound)..<(
-                visibleRange.lowerBound + bounds.upperBound
-            )
+            visibleRange: lower..<upper,
+            indexBase: bounds.lowerBound
         )
     }
 

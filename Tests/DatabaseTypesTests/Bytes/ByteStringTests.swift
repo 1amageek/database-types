@@ -143,6 +143,36 @@ struct ByteStringTests {
         #expect(ByteString([0x01]) < ByteString([0x01, 0x00]))
         #expect(!(ByteString([0x01]) < ByteString([0x01])))
     }
+
+    @Test("Slices keep the parent index space so shared indices stay valid")
+    func slicesKeepParentIndexSpace() throws {
+        let value: ByteString = [0x00, 0x01, 0x02, 0x03, 0x04]
+        let slice = value[2..<4]
+
+        // A SubSequence must share indices with its base.
+        #expect(slice.startIndex == 2)
+        #expect(slice.endIndex == 4)
+        #expect(slice[2] == 0x02)
+        #expect(slice[3] == 0x03)
+
+        // An index found on the base reads the same element on the slice.
+        let indexOfTwo = try #require(value.firstIndex(of: 0x02))
+        #expect(indexOfTwo == 2)
+        #expect(slice[indexOfTwo] == 0x02)
+
+        // Dropping a prefix does not rebase the remaining indices.
+        let dropped = value.dropFirst(3)
+        #expect(dropped.startIndex == 3)
+        let indexOfThree = try #require(dropped.firstIndex(of: 0x03))
+        #expect(indexOfThree == 3)
+        #expect(value[indexOfThree] == 0x03)
+
+        // Slicing a slice keeps composing into the original index space.
+        let nested = slice[3..<4]
+        #expect(nested.startIndex == 3)
+        #expect(nested[3] == 0x03)
+        #expect(nested == [0x03])
+    }
 }
 
 private enum ByteStringTestError: Error {
