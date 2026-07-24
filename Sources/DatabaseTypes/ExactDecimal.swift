@@ -24,35 +24,6 @@ public struct ExactDecimal: Sendable, Hashable, Comparable {
         }
     }
 
-    public init?(_ value: FieldValue) {
-        switch value {
-        case .int8(let coefficient):
-            self.init(coefficient: Int128(coefficient), scale: 0)
-        case .int16(let coefficient):
-            self.init(coefficient: Int128(coefficient), scale: 0)
-        case .int32(let coefficient):
-            self.init(coefficient: Int128(coefficient), scale: 0)
-        case .int64(let coefficient):
-            self.init(coefficient: Int128(coefficient), scale: 0)
-        case .uint8(let coefficient):
-            self.init(coefficient: Int128(coefficient), scale: 0)
-        case .uint16(let coefficient):
-            self.init(coefficient: Int128(coefficient), scale: 0)
-        case .uint32(let coefficient):
-            self.init(coefficient: Int128(coefficient), scale: 0)
-        case .uint64(let coefficient):
-            self.init(coefficient: Int128(coefficient), scale: 0)
-        case .decimal(let value):
-            self = value
-        default:
-            return nil
-        }
-    }
-
-    public var fieldValue: FieldValue {
-        .decimal(self)
-    }
-
     public func adding(
         _ other: Self
     ) throws(ExactDecimalError) -> Self {

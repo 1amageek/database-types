@@ -17,7 +17,8 @@ packages.
 
 ## Current types
 
-- `ByteString`: immutable byte value with constant-time zero-copy slicing.
+- `ByteString`: immutable byte value that retains `Array`, `ArraySlice`, or an
+  external owner and provides constant-time zero-copy slicing.
 - `ByteStringOwner`: stable external ownership contract used by host adapters.
 - `FieldValue`: closed field-value algebra with exact representation identity
   and deterministic total ordering.

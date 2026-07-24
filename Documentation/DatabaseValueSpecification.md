@@ -50,7 +50,8 @@ model-adaptation layer. User models are not required to expose `FieldValue`,
 
 Numeric widths are part of value identity. `int8(1)`, `int64(1)`, and
 `uint64(1)` are distinct values. Numeric coercion is a query responsibility.
-Float identity preserves the IEEE bit pattern.
+Atomic numeric types do not accept or produce `FieldValue`; the enclosing
+algebra owns those associations. Float identity preserves the IEEE bit pattern.
 
 `FieldValue.object` contains a `FieldObject`, not a bare array.
 `FieldObject` maps exact `String` keys to `FieldValue` values. It rejects
@@ -187,7 +188,8 @@ storage, provides a width-specific scoped contiguous borrow, and creates
 constant-time slices. A vector is a homogeneous dense numeric value;
 heterogeneous numeric collections remain `FieldValue.array`. Similarity
 metrics, vector normalization, dimension limits, quantization policy, and ANN
-indexes belong to upper layers.
+indexes belong to upper layers. `VectorElementType` has no public raw value;
+wire and storage layers assign their own format-specific tags.
 
 `GeographicPoint` stores WGS 84 latitude and longitude. Latitude is within
 `-90...90`, longitude is within `-180...180`, and both values are finite.
@@ -228,7 +230,8 @@ belong to their semantic layers.
 
 ## Zero-copy contract
 
-- `ByteString` and `Vector` own or retain immutable storage.
+- `ByteString` retains `Array`, `ArraySlice`, or external immutable ownership.
+- `Vector` retains immutable `Array` or `ArraySlice` storage.
 - slices retain their original storage and do not copy payload elements.
 - pointer access is scoped to synchronous borrowing closures.
 - adapters may copy only at an output API that cannot retain the original

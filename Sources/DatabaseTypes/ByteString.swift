@@ -14,30 +14,37 @@ public struct ByteString:
     public typealias SubSequence = ByteString
     public typealias ArrayLiteralElement = UInt8
 
-    private enum Storage: Sendable {
-        case array([UInt8])
-        case owner(any ByteStringOwner)
+    private enum Backing: Sendable {
+        case retainedArray([UInt8])
+        case retainedSlice(ArraySlice<UInt8>)
+        case externalOwner(any ByteStringOwner)
     }
 
-    private let storage: Storage
-    private let storageRange: Range<Int>
+    private let backing: Backing
+    private let visibleRange: Range<Int>
 
     public init() {
-        self.storage = .array([])
-        self.storageRange = 0..<0
+        self.backing = .retainedArray([])
+        self.visibleRange = 0..<0
     }
 
     /// Retains the array's copy-on-write storage.
     public init(_ bytes: [UInt8]) {
-        self.storage = .array(bytes)
-        self.storageRange = 0..<bytes.count
+        self.backing = .retainedArray(bytes)
+        self.visibleRange = 0..<bytes.count
+    }
+
+    /// Retains the slice's copy-on-write storage without materializing bytes.
+    public init(_ bytes: ArraySlice<UInt8>) {
+        self.backing = .retainedSlice(bytes)
+        self.visibleRange = 0..<bytes.count
     }
 
     /// Retains an immutable external owner without copying its bytes.
     public init(retaining owner: any ByteStringOwner) {
         precondition(owner.count >= 0)
-        self.storage = .owner(owner)
-        self.storageRange = 0..<owner.count
+        self.backing = .externalOwner(owner)
+        self.visibleRange = 0..<owner.count
     }
 
     public init(arrayLiteral elements: UInt8...) {
@@ -45,11 +52,11 @@ public struct ByteString:
     }
 
     private init(
-        storage: Storage,
-        storageRange: Range<Int>
+        backing: Backing,
+        visibleRange: Range<Int>
     ) {
-        self.storage = storage
-        self.storageRange = storageRange
+        self.backing = backing
+        self.visibleRange = visibleRange
     }
 
     /// Allocates the final byte string storage once.
@@ -105,7 +112,7 @@ public struct ByteString:
     }
 
     public var startIndex: Int { 0 }
-    public var endIndex: Int { storageRange.count }
+    public var endIndex: Int { visibleRange.count }
 
     public subscript(position: Int) -> UInt8 {
         precondition(indices.contains(position))
@@ -120,9 +127,9 @@ public struct ByteString:
                 && bounds.upperBound <= endIndex
         )
         return ByteString(
-            storage: storage,
-            storageRange: (storageRange.lowerBound + bounds.lowerBound)..<(
-                storageRange.lowerBound + bounds.upperBound
+            backing: backing,
+            visibleRange: (visibleRange.lowerBound + bounds.lowerBound)..<(
+                visibleRange.lowerBound + bounds.upperBound
             )
         )
     }
@@ -133,16 +140,24 @@ public struct ByteString:
     public func withUnsafeBytes<Result>(
         _ body: (UnsafeRawBufferPointer) throws -> Result
     ) rethrows -> Result {
-        switch storage {
-        case .array(let bytes):
+        switch backing {
+        case .retainedArray(let bytes):
             return try bytes.withUnsafeBytes { source in
                 try body(
                     UnsafeRawBufferPointer(
-                        rebasing: source[storageRange]
+                        rebasing: source[visibleRange]
                     )
                 )
             }
-        case .owner(let owner):
+        case .retainedSlice(let bytes):
+            return try bytes.withUnsafeBytes { source in
+                try body(
+                    UnsafeRawBufferPointer(
+                        rebasing: source[visibleRange]
+                    )
+                )
+            }
+        case .externalOwner(let owner):
             var outcome: ByteStringBorrowOutcome<Result> = .missing
             try owner.borrowBytes { source in
                 precondition(source.count == owner.count)
@@ -155,7 +170,7 @@ public struct ByteString:
                 outcome = .value(
                     try body(
                         UnsafeRawBufferPointer(
-                            rebasing: source[storageRange]
+                            rebasing: source[visibleRange]
                         )
                     )
                 )
@@ -192,8 +207,8 @@ public struct ByteString:
         guard !isEmpty else {
             return ByteString()
         }
-        if case .array(let bytes) = storage,
-           storageRange == bytes.indices {
+        if case .retainedArray(let bytes) = backing,
+           visibleRange == bytes.indices {
             return self
         }
         return ByteString.copying(count: count) { destination in

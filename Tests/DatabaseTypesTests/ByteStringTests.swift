@@ -25,6 +25,39 @@ struct ByteStringTests {
         #expect(value[0] == 0x10)
     }
 
+    @Test("ArraySlice initialization retains visible storage without copying")
+    func arraySliceInitializationSharesStorage() throws {
+        var source: [UInt8] = [0x10, 0x20, 0x30, 0x40, 0x50]
+        let sourceSlice = source[1..<4]
+        let sourceAddress = try #require(
+            sourceSlice.withUnsafeBytes { bytes in
+                bytes.baseAddress.map(UInt.init(bitPattern:))
+            }
+        )
+
+        let value = ByteString(sourceSlice)
+        let valueAddress = try #require(
+            value.withUnsafeBytes { bytes in
+                bytes.baseAddress.map(UInt.init(bitPattern:))
+            }
+        )
+
+        #expect(valueAddress == sourceAddress)
+        #expect(value == [0x20, 0x30, 0x40])
+
+        source[1] = 0xFF
+        #expect(value[0] == 0x20)
+
+        let detached = value.detached()
+        let detachedAddress = try #require(
+            detached.withUnsafeBytes { bytes in
+                bytes.baseAddress.map(UInt.init(bitPattern:))
+            }
+        )
+        #expect(detachedAddress != valueAddress)
+        #expect(detached == value)
+    }
+
     @Test("Slices retain the same backing storage")
     func slicesShareStorage() throws {
         let value: ByteString = [0x10, 0x20, 0x30, 0x40]
