@@ -216,6 +216,68 @@ struct PrimitiveInvariantTests {
         }
     }
 
+    @Test("Vector preserves every fixed-width integer representation")
+    func integerVectorRepresentations() throws {
+        let vectors: [Vector] = [
+            Vector(int8: [-1]),
+            Vector(int16: [-1]),
+            Vector(int32: [-1]),
+            Vector(int64: [-1]),
+            Vector(uint8: [1]),
+            Vector(uint16: [1]),
+            Vector(uint32: [1]),
+            Vector(uint64: [1]),
+            try Vector(float32: [1]),
+            try Vector(float64: [1]),
+        ]
+
+        #expect(
+            vectors.map(\.elementType) == [
+                .int8,
+                .int16,
+                .int32,
+                .int64,
+                .uint8,
+                .uint16,
+                .uint32,
+                .uint64,
+                .float32,
+                .float64,
+            ]
+        )
+        #expect(vectors.sorted() == vectors)
+        #expect(Set(vectors).count == vectors.count)
+
+        let elements: [Int16] = [10, 20, 30, 40]
+        let sourceAddress = try #require(
+            elements.withUnsafeBufferPointer { buffer in
+                buffer.baseAddress.map(UInt.init(bitPattern:))
+            }
+        )
+        let vector = Vector(int16: elements)
+        let vectorAddress = try #require(
+            vector.withInt16Elements { buffer in
+                buffer.baseAddress.map(UInt.init(bitPattern:))
+            }
+        )
+        #expect(vectorAddress == sourceAddress)
+
+        let slice = vector.subvector(in: 1..<3)
+        let sliceAddress = try #require(
+            slice.withInt16Elements { buffer in
+                buffer.baseAddress.map(UInt.init(bitPattern:))
+            }
+        )
+        #expect(
+            sliceAddress == sourceAddress + UInt(MemoryLayout<Int16>.stride)
+        )
+        #expect(
+            slice.withInt16Elements { Array($0) } == [20, 30]
+        )
+        let mismatchedBorrow: Int? = vector.withInt8Elements { _ in 1 }
+        #expect(mismatchedBorrow == nil)
+    }
+
     @Test("UUID parses and formats one canonical 128-bit value")
     func uuidRoundTrip() throws {
         let spelling = "01234567-89ab-cdef-0123-456789abcdef"

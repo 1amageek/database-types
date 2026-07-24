@@ -79,7 +79,7 @@ contract.
 | Foundation `DateComponents` | `CalendarPeriod` | Strict year/month/day conversion |
 | Coordinates | `GeographicPoint` | Validated WGS 84 degrees |
 | Three-dimensional position | `GeographicPosition` | WGS 84 ellipsoidal height in meters |
-| Dense numeric vector | `Vector` | Width-preserving retained storage |
+| Dense numeric vector | `Vector` | Fixed-width integer or floating-point retained storage |
 
 ## Temporal model
 
@@ -141,10 +141,14 @@ saturates, truncates, or silently rounds.
 
 ## Vector and geographic point
 
-`Vector` preserves Float32 or Float64 element width. It rejects non-finite
-elements, retains copy-on-write array storage, provides scoped contiguous
-borrows, and creates constant-time slices. Similarity metrics, vector
-normalization, dimension limits, and ANN indexes belong to upper layers.
+`Vector` preserves `Int8`, `Int16`, `Int32`, `Int64`, `UInt8`, `UInt16`,
+`UInt32`, `UInt64`, Float32, or Float64 element width. Floating-point vectors
+reject non-finite elements. Every representation retains copy-on-write array
+storage, provides a width-specific scoped contiguous borrow, and creates
+constant-time slices. A vector is a homogeneous dense numeric value;
+heterogeneous numeric collections remain `FieldValue.array`. Similarity
+metrics, vector normalization, dimension limits, quantization policy, and ANN
+indexes belong to upper layers.
 
 `GeographicPoint` stores WGS 84 latitude and longitude. Latitude is within
 `-90...90`, longitude is within `-180...180`, and both values are finite.
