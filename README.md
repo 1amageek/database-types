@@ -15,6 +15,27 @@ packages.
 - `DatabaseTypesFoundation`: explicit `Date`, `Data`, `UUID`, `Decimal`,
   calendar, and time-zone conversion for native runtimes.
 
+## Source layout
+
+The core is organized by represented value domain. Directories do not define
+additional modules or dependency boundaries.
+
+| Directory | Responsibility |
+|---|---|
+| `FieldValues` | Closed field-value algebra and canonical objects |
+| `Bytes` | Immutable byte ownership, borrowing, and slicing |
+| `Decimal` | Exact base-10 representation and arithmetic |
+| `Temporal` | Civil, absolute, fixed-duration, and calendar-period values |
+| `Geographic` | Two- and three-dimensional WGS 84 values |
+| `Vector` | Fixed-width dense numeric vectors |
+| `Identity` | UUIDs, reference identifiers, and reference values |
+| `RDF` | RDF terms and their intrinsic validated components |
+| `Text` | Shared exact text-identity implementation |
+
+`DatabaseTypesFoundation` mirrors only the domains that require Foundation
+conversion. Tests follow the same domain layout; cross-domain invariant tests
+remain under `Invariants`.
+
 ## Current types
 
 - `ByteString`: immutable byte value that retains `Array`, `ArraySlice`, or an
