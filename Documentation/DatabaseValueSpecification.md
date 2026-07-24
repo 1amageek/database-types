@@ -23,6 +23,11 @@ hashing, deterministic ordering, immutable ownership, and scoped borrowing.
 It does not own schema, query coercion, wire tags, persistence policy, indexes,
 or runtime behavior.
 
+Arrows point from a consumer to its dependency. `database-kit` consumes
+`DatabaseTypes`; `DatabaseTypes` does not import, depend on, or derive its
+build and release status from `database-kit`. Every consumer declares and
+validates its own dependency.
+
 `DatabaseTypesFoundation` is an optional native adapter. It owns explicit
 conversion between Foundation scalar values and canonical primitives. The core
 target does not import Foundation or FoundationEssentials.

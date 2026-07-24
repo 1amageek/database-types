@@ -8,12 +8,72 @@ The package owns value semantics only. Transport, wire framing, query
 execution, storage transactions, and platform bridges belong to separate
 packages.
 
+## Dependency direction
+
+```text
+database-kit ───────────────> DatabaseTypes
+DatabaseTypesFoundation ────> DatabaseTypes
+```
+
+Arrows point from a consumer to its dependency. `DatabaseTypes` never imports
+or depends on `database-kit`; the packages build, test, and release
+independently. A consumer must declare its own `DatabaseTypes` dependency.
+
 ## Products
 
 - `DatabaseTypes`: core primitive and ownership types for Swift Embedded and native
   runtimes.
 - `DatabaseTypesFoundation`: explicit `Date`, `Data`, `UUID`, `Decimal`,
   calendar, and time-zone conversion for native runtimes.
+
+## Requirements
+
+- Swift 6.4 or newer.
+- A Swift 6.4 or newer Wasm Embedded SDK for Embedded builds.
+- macOS 15, iOS 18, tvOS 18, watchOS 11, or visionOS 2 for the optional
+  Foundation adapter.
+
+The Swift compiler and Wasm Embedded SDK must use the same toolchain version.
+
+## Package dependency
+
+The package is in initial development and currently publishes its development
+line from `main`:
+
+```swift
+dependencies: [
+    .package(
+        url: "https://github.com/1amageek/database-types.git",
+        branch: "main"
+    ),
+]
+```
+
+Depend on `DatabaseTypes` for the Foundation-independent primitive layer.
+Depend on `DatabaseTypesFoundation` only in native targets that require
+explicit Foundation conversion.
+
+## Verification
+
+Run the native test suite with Xcode:
+
+```bash
+xcodebuild test \
+  -scheme database-types-Package \
+  -destination 'platform=macOS,arch=arm64'
+```
+
+Compile the core with a matching Swift 6.4+ compiler and Embedded SDK:
+
+```bash
+swift build \
+  --configuration release \
+  --product DatabaseTypes \
+  --swift-sdk <swift-6.4-or-newer_wasm-embedded>
+```
+
+`DatabaseTypesFoundation` is intentionally absent from the Embedded dependency
+graph.
 
 ## Source layout
 
