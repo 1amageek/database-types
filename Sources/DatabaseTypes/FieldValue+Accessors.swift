@@ -131,7 +131,7 @@ extension FieldValue {
         return value
     }
 
-    public var objectValue: FieldObject? {
+    public var objectValue: ObjectValue? {
         guard case .object(let value) = self else { return nil }
         return value
     }

@@ -1,4 +1,4 @@
-public enum FieldObjectError: Error, Sendable, Equatable {
+public enum ObjectValueError: Error, Sendable, Equatable {
     case duplicateFieldNumber(UInt32)
     case duplicateFieldName(String)
 }

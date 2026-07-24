@@ -30,8 +30,8 @@ packages.
   `Vector`: validated specialized values.
 - `ReferenceIdentifier` and `EntityReference`: canonical primitive reference
   components.
-- `FieldObject`: canonical object with unique field numbers and exact names.
-- `ObjectField`: one numbered, named field owned by a `FieldObject`.
+- `ObjectValue`: canonical object with unique field numbers and exact names.
+- `ObjectField`: one numbered, named field owned by an `ObjectValue`.
 - `RDFTerm` and its atomic RDF components: validated RDF values, subjects,
   predicates, IRIs, blank-node identifiers, literals, language tags, and XSD
   datatypes.

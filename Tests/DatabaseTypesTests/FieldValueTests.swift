@@ -84,7 +84,7 @@ struct FieldValueTests {
                 ),
             ]
         )
-        let value = FieldValue.object(try FieldObject([
+        let value = FieldValue.object(try ObjectValue([
             try ObjectField(
                 number: 1,
                 name: "reference",
@@ -172,7 +172,7 @@ struct FieldValueTests {
                 canonicalString: "00000000-0000-0000-0000-000000000001"
             ))),
             .array([.null]),
-            .object(try FieldObject([objectField])),
+            .object(try ObjectValue([objectField])),
             .reference(reference),
             .rdfTerm(.iri(try RDFIRI("urn:database-types:value"))),
         ]

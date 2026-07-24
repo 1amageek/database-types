@@ -52,8 +52,8 @@ Numeric widths are part of value identity. `int8(1)`, `int64(1)`, and
 `uint64(1)` are distinct values. Numeric coercion is a query responsibility.
 Float identity preserves the IEEE bit pattern.
 
-`FieldValue.object` contains a `FieldObject`, not a bare array.
-`FieldObject` requires unique field numbers and exact field names, and stores
+`FieldValue.object` contains an `ObjectValue`, not a bare array.
+`ObjectValue` requires unique field numbers and exact field names, and stores
 fields in ascending number order. Input order therefore does not affect object
 identity, hashing, comparison, wire iteration, or storage encoding. Its
 internal array is canonical contiguous storage rather than the public object

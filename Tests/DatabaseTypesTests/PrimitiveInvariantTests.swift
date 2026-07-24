@@ -350,8 +350,8 @@ struct PrimitiveInvariantTests {
         }
     }
 
-    @Test("FieldObject canonicalizes order and rejects duplicate identity")
-    func fieldObjectValidation() throws {
+    @Test("ObjectValue canonicalizes order and rejects duplicate identity")
+    func objectValueValidation() throws {
         let first = try ObjectField(
             number: 1,
             name: "first",
@@ -363,13 +363,13 @@ struct PrimitiveInvariantTests {
             value: .int64(2)
         )
 
-        let ordered = try FieldObject([first, second])
-        let reversed = try FieldObject([second, first])
+        let ordered = try ObjectValue([first, second])
+        let reversed = try ObjectValue([second, first])
         #expect(ordered == reversed)
         #expect(ordered.map(\.number) == [1, 2])
 
-        #expect(throws: FieldObjectError.duplicateFieldNumber(1)) {
-            _ = try FieldObject([
+        #expect(throws: ObjectValueError.duplicateFieldNumber(1)) {
+            _ = try ObjectValue([
                 first,
                 ObjectField(
                     number: 1,
@@ -378,8 +378,8 @@ struct PrimitiveInvariantTests {
                 ),
             ])
         }
-        #expect(throws: FieldObjectError.duplicateFieldName("first")) {
-            _ = try FieldObject([
+        #expect(throws: ObjectValueError.duplicateFieldName("first")) {
+            _ = try ObjectValue([
                 first,
                 ObjectField(
                     number: 3,
@@ -400,7 +400,7 @@ struct PrimitiveInvariantTests {
             value: .null
         )
         #expect(
-            try FieldObject([decomposedName, composedName]).count == 2
+            try ObjectValue([decomposedName, composedName]).count == 2
         )
     }
 
