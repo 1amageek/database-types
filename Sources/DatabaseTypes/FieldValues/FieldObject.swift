@@ -84,43 +84,20 @@ public struct FieldObject: Sendable {
 }
 
 extension FieldObject: Hashable {
+    // Comparison, hashing, and ordering route through the shared iterative
+    // engine so a deeply nested object cannot overflow the stack and stays
+    // identical to how the same object compares inside `FieldValue.object`.
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        guard lhs.storage.count == rhs.storage.count else {
-            return false
-        }
-        for index in lhs.storage.indices {
-            let left = lhs.storage[index]
-            let right = rhs.storage[index]
-            guard StringIdentity.equal(left.key, right.key),
-                  left.value == right.value else {
-                return false
-            }
-        }
-        return true
+        StructuralComparison.equal(.field(.object(lhs)), .field(.object(rhs)))
     }
 
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(storage.count)
-        for field in storage {
-            StringIdentity.hash(field.key, into: &hasher)
-            hasher.combine(field.value)
-        }
+        StructuralComparison.hash(.field(.object(self)), into: &hasher)
     }
 }
 
 extension FieldObject: Comparable {
     public static func < (lhs: Self, rhs: Self) -> Bool {
-        let sharedCount = Swift.min(lhs.storage.count, rhs.storage.count)
-        for index in 0..<sharedCount {
-            let left = lhs.storage[index]
-            let right = rhs.storage[index]
-            if !StringIdentity.equal(left.key, right.key) {
-                return StringIdentity.less(left.key, right.key)
-            }
-            if left.value != right.value {
-                return left.value < right.value
-            }
-        }
-        return lhs.storage.count < rhs.storage.count
+        StructuralComparison.compare(.field(.object(lhs)), .field(.object(rhs))) < 0
     }
 }

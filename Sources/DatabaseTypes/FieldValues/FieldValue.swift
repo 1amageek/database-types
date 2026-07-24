@@ -3,6 +3,15 @@
 /// The enum preserves the declared numeric width and representation. Numeric
 /// coercion belongs to the consumer performing that operation and does not
 /// change value identity, hashing, or ordering.
+///
+/// Equality, hashing, and ordering walk `array` and `object` children
+/// iteratively, so their call-stack use stays constant regardless of the
+/// value's structural depth and they cannot overflow the stack. Constructing
+/// and releasing a value is still inherently recursive in the language runtime,
+/// so bounding depth remains a decode-time responsibility of the upper layer
+/// that materializes untrusted input: this primitive layer does not own a
+/// decode depth budget and assumes the values it receives are already
+/// depth-bounded.
 public indirect enum FieldValue: Sendable {
     case null
     case bool(Bool)
