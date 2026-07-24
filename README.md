@@ -1,44 +1,51 @@
 # Database Types
 
-`database-types` provides canonical primitive values shared by the database
-stack. The core remains Foundation-independent and Embedded-safe; platform
-conversion is opt-in.
+Canonical, Foundation-independent primitive values for Swift databases.
 
-The package owns value semantics only. Transport, wire framing, query
-execution, storage transactions, and platform bridges belong to separate
-packages.
+`database-types` provides precise value semantics for data that must cross
+storage, query, and transport boundaries without losing representation
+identity. The core library is designed for both native Swift and Embedded
+Swift. Foundation conversions are available as a separate, opt-in product.
 
-## Dependency direction
+## What it provides
 
-```text
-database-kit ───────────────> DatabaseTypes
-DatabaseTypesFoundation ────> DatabaseTypes
-```
+| Domain | Types and guarantees |
+|---|---|
+| Field values | A closed `FieldValue` algebra with explicit numeric widths, recursive arrays and objects, deterministic equality, hashing, and ordering |
+| Bytes | Immutable `ByteString` ownership, constant-time bounded slices, scoped borrowing, and explicit detachment |
+| Decimal | Canonical `ExactDecimal` values backed by an `Int128` coefficient and `Int32` scale |
+| Time | Separate civil dates, civil times, local date-times, absolute timestamps, fixed durations, and calendar-relative periods |
+| Identity | Canonical UUIDs, reference identifiers, and entity references |
+| Spatial and numeric | Validated WGS 84 coordinates and fixed-width dense vectors |
+| RDF | Validated IRIs, blank nodes, literals, language tags, datatypes, subjects, predicates, and terms |
 
-Arrows point from a consumer to its dependency. `DatabaseTypes` never imports
-or depends on `database-kit`; the packages build, test, and release
-independently. A consumer must declare its own `DatabaseTypes` dependency.
+Every public value is `Sendable`. Invalid intrinsic state is rejected at
+construction with typed errors rather than normalized into a different value
+or accepted as a placeholder.
 
 ## Products
 
-- `DatabaseTypes`: core primitive and ownership types for Swift Embedded and native
-  runtimes.
-- `DatabaseTypesFoundation`: explicit `Date`, `Data`, `UUID`, `Decimal`,
-  calendar, and time-zone conversion for native runtimes.
+### `DatabaseTypes`
 
-## Requirements
+The core primitive library. It does not import Foundation and owns:
 
-- Swift 6.4 or newer.
-- A Swift 6.4 or newer Wasm Embedded SDK for Embedded builds.
-- macOS 15, iOS 18, tvOS 18, watchOS 11, or visionOS 2 for the optional
-  Foundation adapter.
+- canonical representation and intrinsic validation;
+- exact equality, hashing, and deterministic structural ordering;
+- immutable byte ownership and synchronous scoped borrowing;
+- representation-preserving numeric, temporal, spatial, vector, identity, and
+  RDF values.
 
-The Swift compiler and Wasm Embedded SDK must use the same toolchain version.
+### `DatabaseTypesFoundation`
 
-## Package dependency
+An optional native adapter for explicit conversion between canonical values and
+Foundation `Data`, `Date`, `Decimal`, `DateComponents`, and `UUID`.
 
-The package is in initial development and currently publishes its development
-line from `main`:
+Foundation never enters the `DatabaseTypes` target or its Embedded dependency
+graph.
+
+## Installation
+
+The package is in initial development and currently publishes from `main`:
 
 ```swift
 dependencies: [
@@ -49,9 +56,123 @@ dependencies: [
 ]
 ```
 
-Depend on `DatabaseTypes` for the Foundation-independent primitive layer.
-Depend on `DatabaseTypesFoundation` only in native targets that require
-explicit Foundation conversion.
+Add the core product to a target:
+
+```swift
+.target(
+    name: "YourTarget",
+    dependencies: [
+        .product(
+            name: "DatabaseTypes",
+            package: "database-types"
+        ),
+    ]
+)
+```
+
+Add `DatabaseTypesFoundation` only to native targets that need Foundation
+conversion.
+
+## Quick start
+
+```swift
+import DatabaseTypes
+
+let createdOn = try CivilDate(
+    year: 2026,
+    month: 7,
+    day: 24
+)
+
+let payload = ByteString([0x44, 0x42])
+let amount = ExactDecimal(
+    coefficient: 12_345,
+    scale: 2
+)
+
+let object = try FieldObject([
+    (key: "amount", value: .decimal(amount)),
+    (key: "createdOn", value: .date(createdOn)),
+    (key: "payload", value: .bytes(payload)),
+])
+
+let value = FieldValue.object(object)
+```
+
+`FieldObject` rejects duplicate keys and stores fields in canonical UTF-8
+order. Input order therefore does not affect equality, hashing, or comparison.
+
+## Representation guarantees
+
+### Numeric identity
+
+Numeric width is part of `FieldValue` identity. For example, `.int8(1)`,
+`.int64(1)`, and `.uint64(1)` are different values. Floating-point identity
+preserves the IEEE bit pattern. Numeric coercion is intentionally left to the
+operation requesting it.
+
+`ExactDecimal` stores:
+
+```text
+coefficient × 10^(-scale)
+```
+
+It removes redundant trailing decimal zeros and gives zero one canonical
+representation. Arithmetic returns an exact representable value or a typed
+failure; non-terminating division is not rounded silently.
+
+### Temporal identity
+
+The temporal types do not conflate calendar values with absolute time:
+
+```text
+CivilDate + CivilTime
+          │
+          ▼
+ CivilDateTime ── explicit time-zone policy ──> Timestamp
+
+ TimeSpan: fixed elapsed time
+ CalendarPeriod: calendar-relative months and days
+```
+
+`Timestamp` is an absolute Unix-epoch value with nanosecond resolution.
+`CivilDateTime` has no time zone and does not identify an instant until a
+consumer applies an explicit time-zone and resolution policy.
+
+### Byte ownership
+
+`ByteString` retains array, slice, or external immutable storage and creates
+bounded slices without copying payload bytes:
+
+```text
+retained owner
+└── ByteString
+    └── bounded ByteString slice
+```
+
+Use `withUnsafeBytes` for a synchronous borrow. The pointer must not escape the
+closure. Use `detached()` when a small slice must stop retaining a larger
+backing owner.
+
+## Scope
+
+This package defines primitive values only. It deliberately does not provide:
+
+- schemas, queries, execution plans, or database runtime behavior;
+- storage engines, transactions, indexes, or persistence policy;
+- wire framing, serialization formats, transports, or protocol versions;
+- model mapping, implicit numeric coercion, or implicit Foundation conversion.
+
+Those concerns can consume these values without changing their canonical
+identity.
+
+## Requirements
+
+| Use | Requirement |
+|---|---|
+| Package | Swift 6.4 or newer |
+| Embedded | A Swift 6.4 or newer Wasm Embedded SDK built for the same toolchain version |
+| Foundation adapter | macOS 15, iOS 18, tvOS 18, watchOS 11, or visionOS 2 |
 
 ## Verification
 
@@ -63,7 +184,7 @@ xcodebuild test \
   -destination 'platform=macOS,arch=arm64'
 ```
 
-Compile the core with a matching Swift 6.4+ compiler and Embedded SDK:
+Compile the core with a matching compiler and Embedded SDK:
 
 ```bash
 swift build \
@@ -72,65 +193,9 @@ swift build \
   --swift-sdk <swift-6.4-or-newer_wasm-embedded>
 ```
 
-`DatabaseTypesFoundation` is intentionally absent from the Embedded dependency
-graph.
+## Documentation
 
-## Source layout
-
-The core is organized by represented value domain. Directories do not define
-additional modules or dependency boundaries.
-
-| Directory | Responsibility |
-|---|---|
-| `FieldValues` | Closed field-value algebra and canonical objects |
-| `Bytes` | Immutable byte ownership, borrowing, and slicing |
-| `Decimal` | Exact base-10 representation and arithmetic |
-| `Temporal` | Civil, absolute, fixed-duration, and calendar-period values |
-| `Geographic` | Two- and three-dimensional WGS 84 values |
-| `Vector` | Fixed-width dense numeric vectors |
-| `Identity` | UUIDs, reference identifiers, and reference values |
-| `RDF` | RDF terms and their intrinsic validated components |
-| `Text` | Shared exact text-identity implementation |
-
-`DatabaseTypesFoundation` mirrors only the domains that require Foundation
-conversion. Tests follow the same domain layout; cross-domain invariant tests
-remain under `Invariants`.
-
-## Current types
-
-- `ByteString`: immutable byte value that retains `Array`, `ArraySlice`, or an
-  external owner and provides constant-time zero-copy slicing.
-- `ByteStringOwner`: stable external ownership contract used by host adapters.
-- `FieldValue`: closed field-value algebra with exact representation identity
-  and deterministic total ordering.
-- `CivilDate`, `CivilTime`, `CivilDateTime`, and `Timestamp`: distinct civil and
-  absolute time domains.
-- `TimeSpan` and `CalendarPeriod`: distinct fixed and calendar-relative
-  amounts.
-- `ExactDecimal`: normalized `Int128` coefficient and `Int32` scale.
-- `UUID`, `GeographicPoint`, `GeographicPosition`, and fixed-width numeric
-  `Vector`: validated specialized values.
-- `ReferenceIdentifier` and `EntityReference`: canonical primitive reference
-  components.
-- `FieldObject`: canonical string-keyed object that contains the JSON object
-  value model and additional `FieldValue` primitives.
-- `RDFTerm` and its atomic RDF components: validated RDF values, subjects,
-  predicates, IRIs, blank-node identifiers, literals, language tags, and XSD
-  datatypes.
-
-## Ownership boundary
-
-| Owned here | Owned by an upper package |
-|---|---|
-| Primitive representation and intrinsic invariants | Query and schema meaning |
-| Exact equality, hashing, and structural ordering | Numeric query coercion |
-| Immutable byte ownership and scoped borrowing | Wire framing and binary codecs |
-| RDF atomic value semantics | Graph execution and algorithms |
-| Foundation-independent primitive storage | Model and Codable adaptation |
-| Explicit Foundation scalar conversion product | Implicit conversion policy |
-
-The package contains no compatibility aliases. Public declarations are named
-for the represented value or ownership contract rather than for this module.
-
-See [Database Value Specification](Documentation/DatabaseValueSpecification.md)
-for invariants, conversion policy, comparison rules, and ownership boundaries.
+See the
+[Database Value Specification](Documentation/DatabaseValueSpecification.md)
+for the complete value algebra, invariants, comparison rules, ownership
+contracts, and conversion policy.
