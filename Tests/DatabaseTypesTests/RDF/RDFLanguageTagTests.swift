@@ -3,6 +3,20 @@ import Testing
 
 @Suite("RDF language-tag model")
 struct RDFLanguageTagTests {
+    @Test
+    func borrowedUTF8Validation() {
+        let bytes = Array("prefix-en-Latn-US-suffix".utf8)
+        bytes.withUnsafeBytes { buffer in
+            #expect(RDFLanguageTag.isValid(utf8: buffer, in: 7..<17))
+            #expect(!RDFLanguageTag.isValid(utf8: buffer, in: 7..<18))
+            #expect(!RDFLanguageTag.isValid(utf8: buffer, in: -1..<2))
+            #expect(!RDFLanguageTag.isValid(
+                utf8: buffer,
+                in: buffer.count..<(buffer.count + 1)
+            ))
+        }
+    }
+
     @Test("BCP 47 well-formed tags are accepted and canonicalized")
     func wellFormedTags() throws {
         let values = [
