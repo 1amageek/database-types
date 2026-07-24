@@ -15,7 +15,14 @@ public struct UUID:
         self.low = low
     }
 
-    public init?<Bytes: Collection>(bytes: Bytes) where Bytes.Element == UInt8 {
+    /// Builds a UUID from exactly 16 bytes in big-endian order.
+    ///
+    /// The parameter is a `RandomAccessCollection` so the byte order is defined
+    /// by position. Unordered collections such as `Set` cannot supply a
+    /// meaningful 16-byte sequence and are rejected at the type level.
+    public init?<Bytes: RandomAccessCollection>(
+        bytes: Bytes
+    ) where Bytes.Element == UInt8 {
         guard bytes.count == 16 else { return nil }
 
         var high: UInt64 = 0
