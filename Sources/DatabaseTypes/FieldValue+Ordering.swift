@@ -65,7 +65,7 @@ extension FieldValue: Comparable {
         case (.array(let left), .array(let right)):
             return lexicographicallyPrecedes(left, right)
         case (.object(let left), .object(let right)):
-            return objectFieldsPrecede(left, right)
+            return left < right
         case (.reference(let left), .reference(let right)):
             return left < right
         case (.rdfTerm(let left), .rdfTerm(let right)):
@@ -123,18 +123,4 @@ extension FieldValue: Comparable {
         return left.count < right.count
     }
 
-    private static func objectFieldsPrecede(
-        _ left: [ObjectField],
-        _ right: [ObjectField]
-    ) -> Bool {
-        let sharedCount = min(left.count, right.count)
-        for index in 0..<sharedCount {
-            let leftField = left[index]
-            let rightField = right[index]
-            if leftField != rightField {
-                return leftField < rightField
-            }
-        }
-        return left.count < right.count
-    }
 }

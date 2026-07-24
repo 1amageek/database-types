@@ -84,13 +84,13 @@ struct FieldValueTests {
                 ),
             ]
         )
-        let value = FieldValue.object([
+        let value = FieldValue.object(try FieldObject([
             try ObjectField(
                 number: 1,
                 name: "reference",
                 value: .reference(identity)
             ),
-        ])
+        ]))
 
         #expect(value == value)
         #expect(Set([value, value]).count == 1)
@@ -172,7 +172,7 @@ struct FieldValueTests {
                 canonicalString: "00000000-0000-0000-0000-000000000001"
             ))),
             .array([.null]),
-            .object([objectField]),
+            .object(try FieldObject([objectField])),
             .reference(reference),
             .rdfTerm(.iri(try RDFIRI("urn:database-types:value"))),
         ]

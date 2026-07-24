@@ -30,7 +30,7 @@ public indirect enum FieldValue: Sendable {
     case vector(Vector)
     case uuid(UUID)
     case array([FieldValue])
-    case object([ObjectField])
+    case object(FieldObject)
     case reference(EntityReference)
     case rdfTerm(RDFTerm)
 }

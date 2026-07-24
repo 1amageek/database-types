@@ -288,6 +288,60 @@ struct PrimitiveInvariantTests {
         }
     }
 
+    @Test("FieldObject canonicalizes order and rejects duplicate identity")
+    func fieldObjectValidation() throws {
+        let first = try ObjectField(
+            number: 1,
+            name: "first",
+            value: .int64(1)
+        )
+        let second = try ObjectField(
+            number: 2,
+            name: "second",
+            value: .int64(2)
+        )
+
+        let ordered = try FieldObject([first, second])
+        let reversed = try FieldObject([second, first])
+        #expect(ordered == reversed)
+        #expect(ordered.map(\.number) == [1, 2])
+
+        #expect(throws: FieldObjectError.duplicateFieldNumber(1)) {
+            _ = try FieldObject([
+                first,
+                ObjectField(
+                    number: 1,
+                    name: "other",
+                    value: .null
+                ),
+            ])
+        }
+        #expect(throws: FieldObjectError.duplicateFieldName("first")) {
+            _ = try FieldObject([
+                first,
+                ObjectField(
+                    number: 3,
+                    name: "first",
+                    value: .null
+                ),
+            ])
+        }
+
+        let decomposedName = try ObjectField(
+            number: 3,
+            name: "e\u{301}",
+            value: .null
+        )
+        let composedName = try ObjectField(
+            number: 4,
+            name: "é",
+            value: .null
+        )
+        #expect(
+            try FieldObject([decomposedName, composedName]).count == 2
+        )
+    }
+
     @Test("RDF atomic values reject invalid construction")
     func rdfValidation() throws {
         #expect(throws: RDFBlankNodeIdentifierError.empty) {
