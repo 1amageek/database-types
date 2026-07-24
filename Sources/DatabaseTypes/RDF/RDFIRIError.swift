@@ -5,8 +5,4 @@ public enum RDFIRIError: Error, Sendable, Equatable {
     case invalidCharacter(byteOffset: Int)
     case invalidAuthority
     case invalidIPLiteral
-    case forbiddenBidirectionalFormattingCharacter(
-        scalar: UInt32,
-        byteOffset: Int
-    )
 }

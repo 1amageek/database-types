@@ -148,12 +148,6 @@ enum RDFIRIParser {
         var index = scalars.startIndex
         while index != scalars.endIndex {
             let scalar = scalars[index]
-            if isForbiddenBidirectionalFormattingCharacter(scalar.value) {
-                throw .forbiddenBidirectionalFormattingCharacter(
-                    scalar: scalar.value,
-                    byteOffset: byteOffset(of: index, in: source)
-                )
-            }
             if scalar.value == 0x25 {
                 let percentOffset = byteOffset(of: index, in: source)
                 scalars.formIndex(after: &index)
@@ -371,13 +365,6 @@ enum RDFIRIParser {
         default:
             return false
         }
-    }
-
-    private static func isForbiddenBidirectionalFormattingCharacter(
-        _ value: UInt32
-    ) -> Bool {
-        value == 0x200E || value == 0x200F
-            || (value >= 0x202A && value <= 0x202E)
     }
 
     private static func isASCIIUnreserved(_ byte: UInt8) -> Bool {

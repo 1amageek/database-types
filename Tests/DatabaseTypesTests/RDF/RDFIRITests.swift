@@ -28,6 +28,14 @@ struct RDFIRITests {
             "x://256.256.256.256/",
             "x://[::ffff:192.0.2.128]/",
             "x:\u{20D0}",
+            // Bidirectional formatting scalars are valid RFC 3987 ucschar.
+            // Anti-spoofing display policy belongs to an upper layer, not to
+            // primitive IRI validation.
+            "x:\u{200E}",
+            "x:\u{200F}",
+            "x:\u{202E}",
+            "x:\u{2066}",
+            "x:\u{061C}",
         ]
 
         for value in values {
@@ -59,8 +67,6 @@ struct RDFIRITests {
             "x://[::ffff:192.0.2.01]/",
             "x://[v1.a%20]/",
             "x:#a#b",
-            "x:\u{200E}",
-            "x:\u{202E}",
             "x://\u{20D0}host:bad",
         ]
 
