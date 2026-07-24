@@ -25,18 +25,27 @@ extension FieldValue: Hashable {
             return left.bitPattern == right.bitPattern
         case (.float64(let left), .float64(let right)):
             return left.bitPattern == right.bitPattern
-        case (
-            .decimal(let leftCoefficient, let leftScale),
-            .decimal(let rightCoefficient, let rightScale)
-        ):
-            return leftCoefficient == rightCoefficient && leftScale == rightScale
+        case (.decimal(let left), .decimal(let right)):
+            return left == right
         case (.string(let left), .string(let right)):
             return StringIdentity.equal(left, right)
         case (.bytes(let left), .bytes(let right)):
             return left == right
         case (.date(let left), .date(let right)):
             return left == right
+        case (.time(let left), .time(let right)):
+            return left == right
+        case (.dateTime(let left), .dateTime(let right)):
+            return left == right
         case (.timestamp(let left), .timestamp(let right)):
+            return left == right
+        case (.timeSpan(let left), .timeSpan(let right)):
+            return left == right
+        case (.calendarPeriod(let left), .calendarPeriod(let right)):
+            return left == right
+        case (.geographicPoint(let left), .geographicPoint(let right)):
+            return left == right
+        case (.vector(let left), .vector(let right)):
             return left == right
         case (.uuid(let left), .uuid(let right)):
             return left == right
@@ -90,10 +99,9 @@ extension FieldValue: Hashable {
         case .float64(let value):
             hasher.combine(11 as UInt8)
             hasher.combine(value.bitPattern)
-        case .decimal(let coefficient, let scale):
+        case .decimal(let value):
             hasher.combine(12 as UInt8)
-            hasher.combine(coefficient)
-            hasher.combine(scale)
+            hasher.combine(value)
         case .string(let value):
             hasher.combine(13 as UInt8)
             StringIdentity.hash(value, into: &hasher)
@@ -103,23 +111,41 @@ extension FieldValue: Hashable {
         case .date(let value):
             hasher.combine(15 as UInt8)
             hasher.combine(value)
-        case .timestamp(let value):
+        case .time(let value):
             hasher.combine(16 as UInt8)
             hasher.combine(value)
-        case .uuid(let value):
+        case .dateTime(let value):
             hasher.combine(17 as UInt8)
             hasher.combine(value)
-        case .array(let values):
+        case .timestamp(let value):
             hasher.combine(18 as UInt8)
+            hasher.combine(value)
+        case .timeSpan(let value):
+            hasher.combine(19 as UInt8)
+            hasher.combine(value)
+        case .calendarPeriod(let value):
+            hasher.combine(20 as UInt8)
+            hasher.combine(value)
+        case .geographicPoint(let value):
+            hasher.combine(21 as UInt8)
+            hasher.combine(value)
+        case .vector(let value):
+            hasher.combine(22 as UInt8)
+            hasher.combine(value)
+        case .uuid(let value):
+            hasher.combine(23 as UInt8)
+            hasher.combine(value)
+        case .array(let values):
+            hasher.combine(24 as UInt8)
             hasher.combine(values)
         case .object(let fields):
-            hasher.combine(19 as UInt8)
+            hasher.combine(25 as UInt8)
             hasher.combine(fields)
         case .reference(let identity):
-            hasher.combine(20 as UInt8)
+            hasher.combine(26 as UInt8)
             hasher.combine(identity)
         case .rdfTerm(let term):
-            hasher.combine(21 as UInt8)
+            hasher.combine(27 as UInt8)
             hasher.combine(term)
         }
     }

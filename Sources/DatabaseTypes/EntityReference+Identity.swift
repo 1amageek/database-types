@@ -1,7 +1,7 @@
-extension EntityIdentity: Hashable {
+extension EntityReference: Hashable {
     public static func == (
-        left: EntityIdentity,
-        right: EntityIdentity
+        left: EntityReference,
+        right: EntityReference
     ) -> Bool {
         StringIdentity.equal(left.entity, right.entity)
             && left.id == right.id

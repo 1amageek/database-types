@@ -1,8 +1,14 @@
-public struct ExactDecimal: Sendable, Hashable {
-    public let coefficient: Int64
+/// A finite base-10 value with one canonical coefficient and scale.
+///
+/// The represented value is `coefficient × 10⁻ˢᶜᵃˡᵉ`. The coefficient is
+/// normalized by removing trailing decimal zeros. Zero is always `(0, 0)`.
+/// `Int128` provides a portable signed coefficient without introducing
+/// Foundation or a storage-specific decimal format.
+public struct ExactDecimal: Sendable, Hashable, Comparable {
+    public let coefficient: Int128
     public let scale: Int32
 
-    public init(coefficient: Int64, scale: Int32) {
+    public init(coefficient: Int128, scale: Int32) {
         var coefficient = coefficient
         var scale = scale
         while coefficient != 0, coefficient % 10 == 0, scale > Int32.min {
@@ -21,31 +27,30 @@ public struct ExactDecimal: Sendable, Hashable {
     public init?(_ value: FieldValue) {
         switch value {
         case .int8(let coefficient):
-            self.init(coefficient: Int64(coefficient), scale: 0)
+            self.init(coefficient: Int128(coefficient), scale: 0)
         case .int16(let coefficient):
-            self.init(coefficient: Int64(coefficient), scale: 0)
+            self.init(coefficient: Int128(coefficient), scale: 0)
         case .int32(let coefficient):
-            self.init(coefficient: Int64(coefficient), scale: 0)
+            self.init(coefficient: Int128(coefficient), scale: 0)
         case .int64(let coefficient):
-            self.init(coefficient: coefficient, scale: 0)
+            self.init(coefficient: Int128(coefficient), scale: 0)
         case .uint8(let coefficient):
-            self.init(coefficient: Int64(coefficient), scale: 0)
+            self.init(coefficient: Int128(coefficient), scale: 0)
         case .uint16(let coefficient):
-            self.init(coefficient: Int64(coefficient), scale: 0)
+            self.init(coefficient: Int128(coefficient), scale: 0)
         case .uint32(let coefficient):
-            self.init(coefficient: Int64(coefficient), scale: 0)
+            self.init(coefficient: Int128(coefficient), scale: 0)
         case .uint64(let coefficient):
-            guard let signed = Int64(exactly: coefficient) else { return nil }
-            self.init(coefficient: signed, scale: 0)
-        case .decimal(let coefficient, let scale):
-            self.init(coefficient: coefficient, scale: scale)
+            self.init(coefficient: Int128(coefficient), scale: 0)
+        case .decimal(let value):
+            self = value
         default:
             return nil
         }
     }
 
     public var fieldValue: FieldValue {
-        .decimal(coefficient: coefficient, scale: scale)
+        .decimal(self)
     }
 
     public func adding(
@@ -86,8 +91,12 @@ public struct ExactDecimal: Sendable, Hashable {
         guard !scale.overflow else {
             throw .numericOverflow
         }
+        let product = coefficient.multipliedReportingOverflow(
+            by: other.coefficient
+        )
+        guard !product.overflow else { throw .numericOverflow }
         return try Self.normalized(
-            coefficient: Int128(coefficient) * Int128(other.coefficient),
+            coefficient: product.partialValue,
             scale: scale.partialValue
         )
     }
@@ -119,8 +128,8 @@ public struct ExactDecimal: Sendable, Hashable {
         let decimalPlaces = max(powersOfTwo, powersOfFive)
         let isNegative = (coefficient < 0) != (other.coefficient < 0)
         let maximumMagnitude = isNegative
-            ? UInt64(Int64.max) + 1
-            : UInt64(Int64.max)
+            ? UInt128(Int128.max) + 1
+            : UInt128(Int128.max)
 
         for _ in powersOfTwo..<decimalPlaces {
             guard numerator <= maximumMagnitude / 2 else {
@@ -135,18 +144,18 @@ public struct ExactDecimal: Sendable, Hashable {
             numerator *= 5
         }
 
-        let coefficient: Int64
+        let coefficient: Int128
         if isNegative {
-            if numerator == UInt64(Int64.max) + 1 {
-                coefficient = Int64.min
+            if numerator == UInt128(Int128.max) + 1 {
+                coefficient = Int128.min
             } else {
-                guard let signed = Int64(exactly: numerator) else {
+                guard let signed = Int128(exactly: numerator) else {
                     throw .numericOverflow
                 }
                 coefficient = -signed
             }
         } else {
-            guard let signed = Int64(exactly: numerator) else {
+            guard let signed = Int128(exactly: numerator) else {
                 throw .numericOverflow
             }
             coefficient = signed
@@ -186,7 +195,7 @@ public struct ExactDecimal: Sendable, Hashable {
         let modulus = try Self.scaledMagnitude(
             other.coefficient.magnitude,
             by: rightPower.partialValue,
-            maximum: UInt64(Int64.max) + 1
+            maximum: UInt128(Int128.max) + 1
         )
         guard modulus != 0 else { throw .divisionByZero }
         let remainderMagnitude = Self.modularScale(
@@ -194,18 +203,18 @@ public struct ExactDecimal: Sendable, Hashable {
             by: leftPower.partialValue,
             modulus: modulus
         )
-        let remainder: Int64
+        let remainder: Int128
         if coefficient < 0 {
-            if remainderMagnitude == UInt64(Int64.max) + 1 {
-                remainder = Int64.min
+            if remainderMagnitude == UInt128(Int128.max) + 1 {
+                remainder = Int128.min
             } else {
-                guard let signed = Int64(exactly: remainderMagnitude) else {
+                guard let signed = Int128(exactly: remainderMagnitude) else {
                     throw .numericOverflow
                 }
                 remainder = -signed
             }
         } else {
-            guard let signed = Int64(exactly: remainderMagnitude) else {
+            guard let signed = Int128(exactly: remainderMagnitude) else {
                 throw .numericOverflow
             }
             remainder = signed
@@ -217,7 +226,7 @@ public struct ExactDecimal: Sendable, Hashable {
     }
 
     public func negated() throws(ExactDecimalError) -> Self {
-        guard coefficient != Int64.min else { throw .numericOverflow }
+        guard coefficient != Int128.min else { throw .numericOverflow }
         return Self(coefficient: -coefficient, scale: scale)
     }
 
@@ -231,6 +240,10 @@ public struct ExactDecimal: Sendable, Hashable {
         if coefficient >= 0, other.coefficient < 0 { return 1 }
         let magnitudeComparison = compareMagnitude(to: other)
         return coefficient < 0 ? -magnitudeComparison : magnitudeComparison
+    }
+
+    public static func < (lhs: Self, rhs: Self) -> Bool {
+        lhs.compare(to: rhs) < 0
     }
 
     public func decimalLexicalForm(
@@ -326,8 +339,8 @@ public struct ExactDecimal: Sendable, Hashable {
             throw .numericOverflow
         }
         return (
-            try Self.scaled(Int128(coefficient), by: leftPower.partialValue),
-            try Self.scaled(Int128(other.coefficient), by: rightPower.partialValue),
+            try Self.scaled(coefficient, by: leftPower.partialValue),
+            try Self.scaled(other.coefficient, by: rightPower.partialValue),
             targetScale
         )
     }
@@ -359,10 +372,7 @@ public struct ExactDecimal: Sendable, Hashable {
             coefficient /= 10
             scale -= 1
         }
-        guard let exact = Int64(exactly: coefficient) else {
-            throw .numericOverflow
-        }
-        return Self(coefficient: exact, scale: scale)
+        return Self(coefficient: coefficient, scale: scale)
     }
 
     private func compareMagnitude(to other: Self) -> Int {
@@ -384,9 +394,9 @@ public struct ExactDecimal: Sendable, Hashable {
     }
 
     private static func greatestCommonDivisor(
-        _ left: UInt64,
-        _ right: UInt64
-    ) -> UInt64 {
+        _ left: UInt128,
+        _ right: UInt128
+    ) -> UInt128 {
         var left = left
         var right = right
         while right != 0 {
@@ -398,10 +408,10 @@ public struct ExactDecimal: Sendable, Hashable {
     }
 
     private static func scaledMagnitude(
-        _ value: UInt64,
+        _ value: UInt128,
         by power: Int32,
-        maximum: UInt64
-    ) throws(ExactDecimalError) -> UInt64 {
+        maximum: UInt128
+    ) throws(ExactDecimalError) -> UInt128 {
         guard power >= 0 else { throw .numericOverflow }
         var result = value
         for _ in 0..<power {
@@ -412,27 +422,56 @@ public struct ExactDecimal: Sendable, Hashable {
     }
 
     private static func modularScale(
-        _ value: UInt64,
+        _ value: UInt128,
         by power: Int32,
-        modulus: UInt64
-    ) -> UInt64 {
+        modulus: UInt128
+    ) -> UInt128 {
         guard modulus != 1 else { return 0 }
         var result = value % modulus
-        var factor = UInt64(10) % modulus
+        var factor = UInt128(10) % modulus
         var exponent = UInt32(power)
         while exponent > 0 {
             if !exponent.isMultiple(of: 2) {
-                result = UInt64(
-                    (UInt128(result) * UInt128(factor)) % UInt128(modulus)
-                )
+                result = modularProduct(result, factor, modulus: modulus)
             }
             exponent /= 2
             if exponent > 0 {
-                factor = UInt64(
-                    (UInt128(factor) * UInt128(factor)) % UInt128(modulus)
+                factor = modularProduct(factor, factor, modulus: modulus)
+            }
+        }
+        return result
+    }
+
+    private static func modularProduct(
+        _ left: UInt128,
+        _ right: UInt128,
+        modulus: UInt128
+    ) -> UInt128 {
+        var multiplicand = left % modulus
+        var multiplier = right
+        var result: UInt128 = 0
+
+        while multiplier != 0 {
+            if !multiplier.isMultiple(of: 2) {
+                result = modularSum(result, multiplicand, modulus: modulus)
+            }
+            multiplier /= 2
+            if multiplier != 0 {
+                multiplicand = modularSum(
+                    multiplicand,
+                    multiplicand,
+                    modulus: modulus
                 )
             }
         }
         return result
+    }
+
+    private static func modularSum(
+        _ left: UInt128,
+        _ right: UInt128,
+        modulus: UInt128
+    ) -> UInt128 {
+        left >= modulus - right ? left - (modulus - right) : left + right
     }
 }

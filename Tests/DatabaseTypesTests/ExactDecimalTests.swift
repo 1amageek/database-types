@@ -35,7 +35,7 @@ struct ExactDecimalTests {
             _ = try one.dividing(by: three)
         }
 
-        let maximum = ExactDecimal(coefficient: Int64.max, scale: 0)
+        let maximum = ExactDecimal(coefficient: Int128.max, scale: 0)
         #expect(throws: ExactDecimalError.numericOverflow) {
             _ = try maximum.adding(one)
         }
@@ -47,7 +47,7 @@ struct ExactDecimalTests {
             scale: Int32.min
         )
         let tiny = ExactDecimal(
-            coefficient: Int64.max,
+            coefficient: Int128.max,
             scale: Int32.max
         )
 
@@ -65,7 +65,7 @@ struct ExactDecimalTests {
         #expect(try enormous.multiplying(by: zero) == zero)
     }
 
-    @Test func multiplicationNormalizesBeforeNarrowingToInt64() throws {
+    @Test func multiplicationNormalizesWideProducts() throws {
         let left = ExactDecimal(
             coefficient: 4_611_686_018_427_387_904,
             scale: 0
@@ -83,7 +83,7 @@ struct ExactDecimalTests {
 
     @Test func divisionUsesTerminatingDecimalFactorsWithoutExpansionOverflow() throws {
         let maximum = ExactDecimal(
-            coefficient: Int64.max,
+            coefficient: Int128.max,
             scale: 0
         )
         let ten = ExactDecimal(coefficient: 10, scale: 0)
@@ -93,7 +93,7 @@ struct ExactDecimalTests {
         #expect(
             try maximum.dividing(by: ten)
                 == ExactDecimal(
-                    coefficient: Int64.max,
+                    coefficient: Int128.max,
                     scale: 1
                 )
         )
@@ -105,7 +105,7 @@ struct ExactDecimalTests {
             throws: ExactDecimalError.numericOverflow
         ) {
             _ = try ExactDecimal(
-                coefficient: Int64.min,
+                coefficient: Int128.min,
                 scale: 0
             ).dividing(by: ExactDecimal(coefficient: -1, scale: 0))
         }

@@ -1,7 +1,7 @@
-extension IdentifierValue: Hashable {
+extension ReferenceIdentifier: Hashable {
     public static func == (
-        left: IdentifierValue,
-        right: IdentifierValue
+        left: ReferenceIdentifier,
+        right: ReferenceIdentifier
     ) -> Bool {
         switch (left, right) {
         case (.bool(let left), .bool(let right)):

@@ -1,3 +1,7 @@
+/// An absolute point on the Unix time line with nanosecond resolution.
+///
+/// The representation has no calendar or time zone. `nanoseconds` is always in
+/// `0..<1_000_000_000`, including for points before the Unix epoch.
 public struct Timestamp: Sendable, Hashable, Comparable {
     public let secondsSinceUnixEpoch: Int64
     public let nanoseconds: UInt32

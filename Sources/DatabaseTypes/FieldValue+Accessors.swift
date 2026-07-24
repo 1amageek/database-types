@@ -61,11 +61,9 @@ extension FieldValue {
         return value
     }
 
-    public var decimalValue: (coefficient: Int64, scale: Int32)? {
-        guard case .decimal(let coefficient, let scale) = self else {
-            return nil
-        }
-        return (coefficient, scale)
+    public var decimalValue: ExactDecimal? {
+        guard case .decimal(let value) = self else { return nil }
+        return value
     }
 
     public var stringValue: String? {
@@ -83,8 +81,38 @@ extension FieldValue {
         return value
     }
 
+    public var timeValue: CivilTime? {
+        guard case .time(let value) = self else { return nil }
+        return value
+    }
+
+    public var dateTimeValue: CivilDateTime? {
+        guard case .dateTime(let value) = self else { return nil }
+        return value
+    }
+
     public var timestampValue: Timestamp? {
         guard case .timestamp(let value) = self else { return nil }
+        return value
+    }
+
+    public var timeSpanValue: TimeSpan? {
+        guard case .timeSpan(let value) = self else { return nil }
+        return value
+    }
+
+    public var calendarPeriodValue: CalendarPeriod? {
+        guard case .calendarPeriod(let value) = self else { return nil }
+        return value
+    }
+
+    public var geographicPointValue: GeographicPoint? {
+        guard case .geographicPoint(let value) = self else { return nil }
+        return value
+    }
+
+    public var vectorValue: Vector? {
+        guard case .vector(let value) = self else { return nil }
         return value
     }
 
@@ -103,7 +131,7 @@ extension FieldValue {
         return value
     }
 
-    public var referenceValue: EntityIdentity? {
+    public var referenceValue: EntityReference? {
         guard case .reference(let value) = self else { return nil }
         return value
     }

@@ -1,7 +1,7 @@
-extension IdentifierValue: Comparable {
+extension ReferenceIdentifier: Comparable {
     public static func < (
-        lhs: IdentifierValue,
-        rhs: IdentifierValue
+        lhs: ReferenceIdentifier,
+        rhs: ReferenceIdentifier
     ) -> Bool {
         let lhsRank = rank(of: lhs)
         let rhsRank = rank(of: rhs)
@@ -48,7 +48,7 @@ extension IdentifierValue: Comparable {
     }
 
     private static func rank(
-        of value: IdentifierValue
+        of value: ReferenceIdentifier
     ) -> UInt8 {
         switch value {
         case .bool: return 0

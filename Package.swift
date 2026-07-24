@@ -15,14 +15,29 @@ let package = Package(
             name: "DatabaseTypes",
             targets: ["DatabaseTypes"]
         ),
+        .library(
+            name: "DatabaseTypesFoundation",
+            targets: ["DatabaseTypesFoundation"]
+        ),
     ],
     targets: [
         .target(
             name: "DatabaseTypes"
         ),
+        .target(
+            name: "DatabaseTypesFoundation",
+            dependencies: ["DatabaseTypes"]
+        ),
         .testTarget(
             name: "DatabaseTypesTests",
             dependencies: ["DatabaseTypes"]
+        ),
+        .testTarget(
+            name: "DatabaseTypesFoundationTests",
+            dependencies: [
+                "DatabaseTypes",
+                "DatabaseTypesFoundation",
+            ]
         ),
     ],
     swiftLanguageModes: [.v6]

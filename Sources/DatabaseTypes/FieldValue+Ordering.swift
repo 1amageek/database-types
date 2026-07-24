@@ -33,33 +33,27 @@ extension FieldValue: Comparable {
         case (.float64(let left), .float64(let right)):
             return left.isTotallyOrdered(belowOrEqualTo: right)
                 && left.bitPattern != right.bitPattern
-        case (
-            .decimal(let leftCoefficient, let leftScale),
-            .decimal(let rightCoefficient, let rightScale)
-        ):
-            let numericComparison = ExactDecimal(
-                coefficient: leftCoefficient,
-                scale: leftScale
-            ).compare(
-                to: ExactDecimal(
-                    coefficient: rightCoefficient,
-                    scale: rightScale
-                )
-            )
-            if numericComparison != 0 {
-                return numericComparison < 0
-            }
-            if leftCoefficient != rightCoefficient {
-                return leftCoefficient < rightCoefficient
-            }
-            return leftScale < rightScale
+        case (.decimal(let left), .decimal(let right)):
+            return left < right
         case (.string(let left), .string(let right)):
             return StringIdentity.less(left, right)
         case (.bytes(let left), .bytes(let right)):
             return left.lexicographicallyPrecedes(right)
         case (.date(let left), .date(let right)):
             return left < right
+        case (.time(let left), .time(let right)):
+            return left < right
+        case (.dateTime(let left), .dateTime(let right)):
+            return left < right
         case (.timestamp(let left), .timestamp(let right)):
+            return left < right
+        case (.timeSpan(let left), .timeSpan(let right)):
+            return left < right
+        case (.calendarPeriod(let left), .calendarPeriod(let right)):
+            return left < right
+        case (.geographicPoint(let left), .geographicPoint(let right)):
+            return left < right
+        case (.vector(let left), .vector(let right)):
             return left < right
         case (.uuid(let left), .uuid(let right)):
             return left < right
@@ -94,12 +88,18 @@ extension FieldValue: Comparable {
         case .string: return 13
         case .bytes: return 14
         case .date: return 15
-        case .timestamp: return 16
-        case .uuid: return 17
-        case .array: return 18
-        case .object: return 19
-        case .reference: return 20
-        case .rdfTerm: return 21
+        case .time: return 16
+        case .dateTime: return 17
+        case .timestamp: return 18
+        case .timeSpan: return 19
+        case .calendarPeriod: return 20
+        case .geographicPoint: return 21
+        case .vector: return 22
+        case .uuid: return 23
+        case .array: return 24
+        case .object: return 25
+        case .reference: return 26
+        case .rdfTerm: return 27
         }
     }
 

@@ -1,3 +1,8 @@
+/// A proleptic Gregorian calendar date without a time or time zone.
+///
+/// This is the SQL `DATE` value domain. It is intentionally distinct from
+/// `Timestamp`; converting between them requires an explicit calendar and time
+/// zone in a platform adapter or upper semantic layer.
 public struct CivilDate: Sendable, Hashable, Comparable {
     public let year: Int32
     public let month: UInt8

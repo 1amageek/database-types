@@ -56,21 +56,19 @@ struct FieldValueTests {
         #expect(FieldValue.float32(7).float64Value == nil)
         #expect(
             FieldValue.decimal(
-                coefficient: 7,
-                scale: 2
+                ExactDecimal(coefficient: 7, scale: 2)
             ).decimalValue?.coefficient == 7
         )
         #expect(
             FieldValue.decimal(
-                coefficient: 7,
-                scale: 2
+                ExactDecimal(coefficient: 7, scale: 2)
             ).decimalValue?.scale == 2
         )
     }
 
     @Test("Recursive values preserve structural identity")
     func recursiveIdentity() throws {
-        let identity = try EntityIdentity(
+        let identity = try EntityReference(
             entity: "Event",
             id: .composite([
                 .uint16(7),
@@ -96,5 +94,86 @@ struct FieldValueTests {
 
         #expect(value == value)
         #expect(Set([value, value]).count == 1)
+    }
+
+    @Test("Temporal primitive cases participate in the total order")
+    func temporalPrimitiveOrdering() throws {
+        let values: [FieldValue] = [
+            .date(try CivilDate(year: 2026, month: 7, day: 24)),
+            .time(try CivilTime(hour: 12, minute: 0, second: 0)),
+            .dateTime(CivilDateTime(
+                date: try CivilDate(year: 2026, month: 7, day: 24),
+                time: try CivilTime(hour: 12, minute: 0, second: 0)
+            )),
+            .timestamp(try Timestamp(secondsSinceUnixEpoch: 0)),
+            .timeSpan(try TimeSpan(seconds: 1)),
+            .calendarPeriod(CalendarPeriod(months: 1)),
+            .geographicPoint(
+                try GeographicPoint(latitude: 0, longitude: 0)
+            ),
+            .vector(try Vector(float32: [1, 2])),
+        ]
+
+        #expect(values.sorted() == values)
+        #expect(Set(values).count == values.count)
+    }
+
+    @Test("Every field case participates in one strict total order")
+    func totalOrderLaws() throws {
+        let objectField = try ObjectField(
+            number: 1,
+            name: "value",
+            value: .string("nested")
+        )
+        let reference = try EntityReference(
+            entity: "Event",
+            id: .uint64(1)
+        )
+        let values: [FieldValue] = [
+            .null,
+            .bool(false),
+            .int8(-1),
+            .int16(-1),
+            .int32(-1),
+            .int64(-1),
+            .uint8(1),
+            .uint16(1),
+            .uint32(1),
+            .uint64(1),
+            .float32(-0.0),
+            .float64(-0.0),
+            .decimal(ExactDecimal(coefficient: 1, scale: 1)),
+            .string("value"),
+            .bytes([1]),
+            .date(try CivilDate(year: 2026, month: 7, day: 24)),
+            .time(try CivilTime(hour: 1, minute: 2, second: 3)),
+            .dateTime(CivilDateTime(
+                date: try CivilDate(year: 2026, month: 7, day: 24),
+                time: try CivilTime(hour: 1, minute: 2, second: 3)
+            )),
+            .timestamp(try Timestamp(secondsSinceUnixEpoch: 1)),
+            .timeSpan(try TimeSpan(seconds: 1)),
+            .calendarPeriod(CalendarPeriod(months: 1)),
+            .geographicPoint(
+                try GeographicPoint(latitude: 1, longitude: 2)
+            ),
+            .vector(try Vector(float32: [1])),
+            .uuid(try #require(UUID(
+                canonicalString: "00000000-0000-0000-0000-000000000001"
+            ))),
+            .array([.null]),
+            .object([objectField]),
+            .reference(reference),
+            .rdfTerm(.iri(try RDFIRI("urn:database-types:value"))),
+        ]
+
+        #expect(values.sorted() == values)
+        for leftIndex in values.indices {
+            for rightIndex in values.indices where leftIndex != rightIndex {
+                let left = values[leftIndex]
+                let right = values[rightIndex]
+                #expect((left < right) != (right < left))
+            }
+        }
     }
 }

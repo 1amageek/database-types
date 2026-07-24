@@ -1,7 +1,7 @@
-extension EntityIdentity: Comparable {
+extension EntityReference: Comparable {
     public static func < (
-        lhs: EntityIdentity,
-        rhs: EntityIdentity
+        lhs: EntityReference,
+        rhs: EntityReference
     ) -> Bool {
         if !StringIdentity.equal(lhs.entity, rhs.entity) {
             return StringIdentity.less(lhs.entity, rhs.entity)

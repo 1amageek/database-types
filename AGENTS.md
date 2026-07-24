@@ -2,8 +2,8 @@
 
 ## Responsibility
 
-`DatabaseTypes` owns only Foundation-independent primitive value
-representations at the bottom of the database stack.
+The package owns primitive value representations at the bottom of the database
+stack. Its `DatabaseTypes` core target remains Foundation-independent.
 
 It owns:
 
@@ -24,8 +24,14 @@ It does not own:
   services;
 - storage transactions, selectors, ranges, conflicts, or backend adapters;
 - client transport, retry, authentication, timeout, or correlation state;
-- Foundation, Codable, URLSession, JavaScript, C ABI, WASI, or Cloudflare
-  adapters.
+- Codable, URLSession, JavaScript, C ABI, WASI, or Cloudflare adapters;
+- model adaptation or implicit conversion policy.
+
+The optional `DatabaseTypesFoundation` product owns only explicit conversion
+between Foundation scalar values and their canonical primitive
+representations. It must not add model, schema, query, persistence, wire, or
+runtime semantics. Foundation dependencies never enter the `DatabaseTypes`
+target or its Embedded dependency graph.
 
 Cross-package use is not evidence that a declaration belongs here.
 
@@ -62,7 +68,7 @@ ownership.
 
 ## Runtime Contract
 
-- Keep the core target Foundation-independent and compatible with Swift
+- Keep the `DatabaseTypes` core target Foundation-independent and compatible with Swift
   Embedded.
 - Preserve typed failures. Do not use silent fallback.
 - Use immutable ownership and scoped borrows for performance-sensitive byte
