@@ -5,12 +5,12 @@
 public struct EntityReference: Sendable {
     public let entity: String
     public let id: ReferenceIdentifier
-    public let partitions: [ObjectField]
+    public let partitions: FieldObject
 
     public init(
         entity: String,
         id: ReferenceIdentifier,
-        partitions: [ObjectField] = []
+        partitions: FieldObject = FieldObject()
     ) throws(EntityReferenceError) {
         guard !entity.isEmpty else {
             throw .emptyEntity

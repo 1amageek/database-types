@@ -76,20 +76,12 @@ struct FieldValueTests {
                     canonicalString: "00000000-0000-0000-0000-000000000001"
                 ))),
             ]),
-            partitions: [
-                try ObjectField(
-                    number: 1,
-                    name: "calendar",
-                    value: .string("primary")
-                ),
-            ]
+            partitions: try FieldObject([
+                (key: "calendar", value: .string("primary")),
+            ])
         )
-        let value = FieldValue.object(try ObjectValue([
-            try ObjectField(
-                number: 1,
-                name: "reference",
-                value: .reference(identity)
-            ),
+        let value = FieldValue.object(try FieldObject([
+            (key: "reference", value: .reference(identity)),
         ]))
 
         #expect(value == value)
@@ -125,11 +117,6 @@ struct FieldValueTests {
 
     @Test("Every field case participates in one strict total order")
     func totalOrderLaws() throws {
-        let objectField = try ObjectField(
-            number: 1,
-            name: "value",
-            value: .string("nested")
-        )
         let reference = try EntityReference(
             entity: "Event",
             id: .uint64(1)
@@ -172,7 +159,9 @@ struct FieldValueTests {
                 canonicalString: "00000000-0000-0000-0000-000000000001"
             ))),
             .array([.null]),
-            .object(try ObjectValue([objectField])),
+            .object(try FieldObject([
+                (key: "value", value: .string("nested")),
+            ])),
             .reference(reference),
             .rdfTerm(.iri(try RDFIRI("urn:database-types:value"))),
         ]

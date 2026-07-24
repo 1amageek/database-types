@@ -52,12 +52,51 @@ Numeric widths are part of value identity. `int8(1)`, `int64(1)`, and
 `uint64(1)` are distinct values. Numeric coercion is a query responsibility.
 Float identity preserves the IEEE bit pattern.
 
-`FieldValue.object` contains an `ObjectValue`, not a bare array.
-`ObjectValue` requires unique field numbers and exact field names, and stores
-fields in ascending number order. Input order therefore does not affect object
-identity, hashing, comparison, wire iteration, or storage encoding. Its
-internal array is canonical contiguous storage rather than the public object
-contract.
+`FieldValue.object` contains a `FieldObject`, not a bare array.
+`FieldObject` maps exact `String` keys to `FieldValue` values. It rejects
+duplicate keys and stores fields in ascending UTF-8 order. Input order therefore
+does not affect object identity, hashing, or comparison. Schema field numbers,
+wire tags, and storage column identifiers are not primitive object values and
+belong to their respective upper layers.
+
+The object takes ownership of contiguous key-value input and canonicalizes that
+storage in place when it is uniquely referenced. Reading `fields` shares the
+same copy-on-write storage and does not copy nested byte, array, vector, or
+object payloads.
+
+## JSON value containment
+
+```mermaid
+flowchart TB
+    JO["JSON object"] --> FO["FieldObject"]
+    JV["JSON value"] --> FV["FieldValue"]
+    FV --> E["Additional database primitives"]
+    E --> B["bytes / timestamp / UUID"]
+    E --> R["reference / RDF term / vector"]
+```
+
+`FieldObject` and `FieldValue` contain the complete recursive JSON value
+structure:
+
+| JSON value | Primitive representation |
+|---|---|
+| `null` | `FieldValue.null` |
+| boolean | `FieldValue.bool` |
+| number | An explicitly selected integer, decimal, or finite float case |
+| string | `FieldValue.string` |
+| array | `FieldValue.array` |
+| object | `FieldValue.object(FieldObject)` |
+
+This is semantic value containment, not preservation of JSON source text.
+Whitespace, member order, escape spelling, and numeric lexical spelling are not
+part of value identity. Duplicate object keys are rejected because they do not
+have an unambiguous value interpretation.
+
+JSON parsing and serialization belong to an adapter, not the Foundation-free
+primitive target. That adapter must reject unsupported numeric ranges,
+non-finite floats, and non-JSON primitive cases unless its API explicitly
+selects a tagged representation. It must not round numbers or invent tagged
+representations silently.
 
 ## User-facing and canonical types
 

@@ -328,15 +328,8 @@ struct PrimitiveInvariantTests {
         }
     }
 
-    @Test("Fields and entity identities reject invalid structure")
+    @Test("Entity identities reject invalid structure")
     func structuralValueValidation() throws {
-        #expect(throws: ObjectFieldError.invalidNumber(0)) {
-            _ = try ObjectField(
-                number: 0,
-                name: "invalid",
-                value: .null
-            )
-        }
         #expect(throws: EntityReferenceError.emptyEntity) {
             _ = try EntityReference(entity: "", id: .int64(1))
         }
@@ -350,58 +343,67 @@ struct PrimitiveInvariantTests {
         }
     }
 
-    @Test("ObjectValue canonicalizes order and rejects duplicate identity")
-    func objectValueValidation() throws {
-        let first = try ObjectField(
-            number: 1,
-            name: "first",
-            value: .int64(1)
-        )
-        let second = try ObjectField(
-            number: 2,
-            name: "second",
-            value: .int64(2)
-        )
+    @Test("FieldObject canonicalizes order and rejects duplicate keys")
+    func fieldObjectValidation() throws {
+        let source: [(key: String, value: FieldValue)] = [
+            (key: "first", value: .int64(1)),
+            (key: "second", value: .int64(2)),
+        ]
+        let sourceAddress = try #require(source.withUnsafeBufferPointer {
+            $0.baseAddress.map(UInt.init(bitPattern:))
+        })
+        let ordered = try FieldObject(source)
+        let objectAddress = try #require(ordered.fields.withUnsafeBufferPointer {
+            $0.baseAddress.map(UInt.init(bitPattern:))
+        })
+        let reversed = try FieldObject([
+            (key: "second", value: .int64(2)),
+            (key: "first", value: .int64(1)),
+        ])
 
-        let ordered = try ObjectValue([first, second])
-        let reversed = try ObjectValue([second, first])
+        #expect(objectAddress == sourceAddress)
         #expect(ordered == reversed)
-        #expect(ordered.map(\.number) == [1, 2])
+        #expect(ordered.fields.map(\.key) == ["first", "second"])
+        #expect(ordered["first"] == .int64(1))
+        #expect(ordered["missing"] == nil)
 
-        #expect(throws: ObjectValueError.duplicateFieldNumber(1)) {
-            _ = try ObjectValue([
-                first,
-                ObjectField(
-                    number: 1,
-                    name: "other",
-                    value: .null
-                ),
-            ])
-        }
-        #expect(throws: ObjectValueError.duplicateFieldName("first")) {
-            _ = try ObjectValue([
-                first,
-                ObjectField(
-                    number: 3,
-                    name: "first",
-                    value: .null
-                ),
+        #expect(throws: FieldObjectError.duplicateKey("first")) {
+            _ = try FieldObject([
+                (key: "first", value: .int64(1)),
+                (key: "first", value: .null),
             ])
         }
 
-        let decomposedName = try ObjectField(
-            number: 3,
-            name: "e\u{301}",
-            value: .null
-        )
-        let composedName = try ObjectField(
-            number: 4,
-            name: "é",
-            value: .null
-        )
-        #expect(
-            try ObjectValue([decomposedName, composedName]).count == 2
-        )
+        let exactUnicodeKeys = try FieldObject([
+            (key: "e\u{301}", value: .int8(1)),
+            (key: "é", value: .int8(2)),
+        ])
+        #expect(exactUnicodeKeys.count == 2)
+        #expect(exactUnicodeKeys["e\u{301}"] == .int8(1))
+        #expect(exactUnicodeKeys["é"] == .int8(2))
+    }
+
+    @Test("FieldObject contains the complete JSON value structure")
+    func fieldObjectJSONStructure() throws {
+        let nested = try FieldObject([
+            (key: "enabled", value: .bool(true)),
+        ])
+        let object = try FieldObject([
+            (key: "array", value: .array([
+                .null,
+                .bool(false),
+                .int64(-1),
+                .uint64(1),
+                .decimal(ExactDecimal(coefficient: 125, scale: 2)),
+                .float64(1.5),
+                .string("value"),
+                .object(nested),
+            ])),
+            (key: "object", value: .object(nested)),
+        ])
+
+        #expect(object["array"]?.arrayValue?.count == 8)
+        #expect(object["object"]?.objectValue?["enabled"] == .bool(true))
     }
 
     @Test("RDF atomic values reject invalid construction")
