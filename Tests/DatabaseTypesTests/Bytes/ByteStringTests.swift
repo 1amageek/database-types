@@ -44,6 +44,7 @@ struct ByteStringTests {
 
         #expect(valueAddress == sourceAddress)
         #expect(value == [0x20, 0x30, 0x40])
+        #expect(value.retainedByteCount == nil)
 
         source[1] = 0xFF
         #expect(value[0] == 0x20)
@@ -56,6 +57,7 @@ struct ByteStringTests {
         )
         #expect(detachedAddress != valueAddress)
         #expect(detached == value)
+        #expect(detached.retainedByteCount == 3)
     }
 
     @Test("Slices retain the same backing storage")
@@ -75,6 +77,8 @@ struct ByteStringTests {
 
         #expect(sliceAddress == valueAddress + 1)
         #expect(slice == [0x20, 0x30])
+        #expect(value.retainedByteCount == 4)
+        #expect(slice.retainedByteCount == 4)
     }
 
     @Test("External owners are borrowed without copying")
@@ -94,6 +98,7 @@ struct ByteStringTests {
 
         #expect(valueAddress == ownerAddress)
         #expect(value == [0x10, 0x20, 0x30, 0x40])
+        #expect(value.retainedByteCount == owner.count)
     }
 
     @Test("Detaching a slice releases its larger owner")
@@ -118,6 +123,8 @@ struct ByteStringTests {
         )
 
         #expect(sliceAddress != detachedAddress)
+        #expect(slice?.retainedByteCount == 4)
+        #expect(detached.retainedByteCount == 2)
         owner = nil
         value = nil
         #expect(releaseProbe.count == 0)

@@ -15,6 +15,19 @@ public enum VectorElementType: Sendable, Hashable, Comparable {
         lhs.comparisonRank < rhs.comparisonRank
     }
 
+    var byteCount: Int {
+        switch self {
+        case .int8, .uint8:
+            return 1
+        case .int16, .uint16:
+            return 2
+        case .int32, .uint32, .float32:
+            return 4
+        case .int64, .uint64, .float64:
+            return 8
+        }
+    }
+
     private var comparisonRank: UInt8 {
         switch self {
         case .int8: 0

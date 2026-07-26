@@ -124,6 +124,24 @@ public struct ByteString:
     public var startIndex: Int { indexBase }
     public var endIndex: Int { indexBase + visibleRange.count }
 
+    /// The byte count retained by this value's backing owner, when known.
+    ///
+    /// A bounded slice can expose fewer bytes through `count` while retaining
+    /// the complete owner. Execution layers use this value when admitting
+    /// retained memory before preserving the slice. An `ArraySlice` does not
+    /// expose the allocation that it retains, so values initialized directly
+    /// from one return `nil` until they are detached.
+    public var retainedByteCount: Int? {
+        switch backing {
+        case .retainedArray(let bytes):
+            return bytes.count
+        case .retainedSlice:
+            return nil
+        case .externalOwner(let owner):
+            return owner.count
+        }
+    }
+
     public subscript(position: Int) -> UInt8 {
         precondition(indices.contains(position))
         return withUnsafeBytes { bytes in

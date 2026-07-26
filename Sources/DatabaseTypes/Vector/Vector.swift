@@ -19,73 +19,96 @@ public struct Vector: Sendable, Hashable, Comparable {
     }
 
     private let storage: Storage
+    private let retainedElementCount: Int?
 
     public init(int8 elements: [Int8]) {
-        self.init(int8: elements[...])
+        self.storage = .int8(elements[...])
+        self.retainedElementCount = elements.count
     }
 
     public init(int8 elements: ArraySlice<Int8>) {
         self.storage = .int8(elements)
+        self.retainedElementCount = nil
     }
 
     public init(int16 elements: [Int16]) {
-        self.init(int16: elements[...])
+        self.storage = .int16(elements[...])
+        self.retainedElementCount = elements.count
     }
 
     public init(int16 elements: ArraySlice<Int16>) {
         self.storage = .int16(elements)
+        self.retainedElementCount = nil
     }
 
     public init(int32 elements: [Int32]) {
-        self.init(int32: elements[...])
+        self.storage = .int32(elements[...])
+        self.retainedElementCount = elements.count
     }
 
     public init(int32 elements: ArraySlice<Int32>) {
         self.storage = .int32(elements)
+        self.retainedElementCount = nil
     }
 
     public init(int64 elements: [Int64]) {
-        self.init(int64: elements[...])
+        self.storage = .int64(elements[...])
+        self.retainedElementCount = elements.count
     }
 
     public init(int64 elements: ArraySlice<Int64>) {
         self.storage = .int64(elements)
+        self.retainedElementCount = nil
     }
 
     public init(uint8 elements: [UInt8]) {
-        self.init(uint8: elements[...])
+        self.storage = .uint8(elements[...])
+        self.retainedElementCount = elements.count
     }
 
     public init(uint8 elements: ArraySlice<UInt8>) {
         self.storage = .uint8(elements)
+        self.retainedElementCount = nil
     }
 
     public init(uint16 elements: [UInt16]) {
-        self.init(uint16: elements[...])
+        self.storage = .uint16(elements[...])
+        self.retainedElementCount = elements.count
     }
 
     public init(uint16 elements: ArraySlice<UInt16>) {
         self.storage = .uint16(elements)
+        self.retainedElementCount = nil
     }
 
     public init(uint32 elements: [UInt32]) {
-        self.init(uint32: elements[...])
+        self.storage = .uint32(elements[...])
+        self.retainedElementCount = elements.count
     }
 
     public init(uint32 elements: ArraySlice<UInt32>) {
         self.storage = .uint32(elements)
+        self.retainedElementCount = nil
     }
 
     public init(uint64 elements: [UInt64]) {
-        self.init(uint64: elements[...])
+        self.storage = .uint64(elements[...])
+        self.retainedElementCount = elements.count
     }
 
     public init(uint64 elements: ArraySlice<UInt64>) {
         self.storage = .uint64(elements)
+        self.retainedElementCount = nil
     }
 
     public init(float32 elements: [Float]) throws(VectorError) {
-        try self.init(float32: elements[...])
+        for (offset, element) in elements.enumerated() {
+            guard element.isFinite else {
+                throw .nonFiniteFloat32(index: offset)
+            }
+        }
+        self.storage = .float32(elements[...])
+        self.retainedElementCount = elements.count
     }
 
     public init(float32 elements: ArraySlice<Float>) throws(VectorError) {
@@ -95,10 +118,17 @@ public struct Vector: Sendable, Hashable, Comparable {
             }
         }
         self.storage = .float32(elements)
+        self.retainedElementCount = nil
     }
 
     public init(float64 elements: [Double]) throws(VectorError) {
-        try self.init(float64: elements[...])
+        for (offset, element) in elements.enumerated() {
+            guard element.isFinite else {
+                throw .nonFiniteFloat64(index: offset)
+            }
+        }
+        self.storage = .float64(elements[...])
+        self.retainedElementCount = elements.count
     }
 
     public init(float64 elements: ArraySlice<Double>) throws(VectorError) {
@@ -108,10 +138,15 @@ public struct Vector: Sendable, Hashable, Comparable {
             }
         }
         self.storage = .float64(elements)
+        self.retainedElementCount = nil
     }
 
-    private init(storage: Storage) {
+    private init(
+        storage: Storage,
+        retainedElementCount: Int?
+    ) {
         self.storage = storage
+        self.retainedElementCount = retainedElementCount
     }
 
     public var elementType: VectorElementType {
@@ -144,29 +179,70 @@ public struct Vector: Sendable, Hashable, Comparable {
         }
     }
 
+    /// The canonical payload byte count retained by this vector, when known.
+    ///
+    /// A subvector keeps the source storage alive, so its retained payload can
+    /// be larger than its visible `count`. This value excludes container
+    /// metadata and uses the scalar width represented by `elementType`.
+    /// An `ArraySlice` cannot reveal its complete retained allocation, so a
+    /// vector initialized directly from one returns `nil` until detached.
+    public var retainedByteCount: Int? {
+        retainedElementCount.map { $0 * elementType.byteCount }
+    }
+
     public func subvector(in bounds: Range<Int>) -> Self {
         precondition(bounds.lowerBound >= 0 && bounds.upperBound <= count)
         switch storage {
         case .int8(let elements):
-            return Self(storage: .int8(Self.slice(elements, in: bounds)))
+            return Self(
+                storage: .int8(Self.slice(elements, in: bounds)),
+                retainedElementCount: retainedElementCount
+            )
         case .int16(let elements):
-            return Self(storage: .int16(Self.slice(elements, in: bounds)))
+            return Self(
+                storage: .int16(Self.slice(elements, in: bounds)),
+                retainedElementCount: retainedElementCount
+            )
         case .int32(let elements):
-            return Self(storage: .int32(Self.slice(elements, in: bounds)))
+            return Self(
+                storage: .int32(Self.slice(elements, in: bounds)),
+                retainedElementCount: retainedElementCount
+            )
         case .int64(let elements):
-            return Self(storage: .int64(Self.slice(elements, in: bounds)))
+            return Self(
+                storage: .int64(Self.slice(elements, in: bounds)),
+                retainedElementCount: retainedElementCount
+            )
         case .uint8(let elements):
-            return Self(storage: .uint8(Self.slice(elements, in: bounds)))
+            return Self(
+                storage: .uint8(Self.slice(elements, in: bounds)),
+                retainedElementCount: retainedElementCount
+            )
         case .uint16(let elements):
-            return Self(storage: .uint16(Self.slice(elements, in: bounds)))
+            return Self(
+                storage: .uint16(Self.slice(elements, in: bounds)),
+                retainedElementCount: retainedElementCount
+            )
         case .uint32(let elements):
-            return Self(storage: .uint32(Self.slice(elements, in: bounds)))
+            return Self(
+                storage: .uint32(Self.slice(elements, in: bounds)),
+                retainedElementCount: retainedElementCount
+            )
         case .uint64(let elements):
-            return Self(storage: .uint64(Self.slice(elements, in: bounds)))
+            return Self(
+                storage: .uint64(Self.slice(elements, in: bounds)),
+                retainedElementCount: retainedElementCount
+            )
         case .float32(let elements):
-            return Self(storage: .float32(Self.slice(elements, in: bounds)))
+            return Self(
+                storage: .float32(Self.slice(elements, in: bounds)),
+                retainedElementCount: retainedElementCount
+            )
         case .float64(let elements):
-            return Self(storage: .float64(Self.slice(elements, in: bounds)))
+            return Self(
+                storage: .float64(Self.slice(elements, in: bounds)),
+                retainedElementCount: retainedElementCount
+            )
         }
     }
 
@@ -177,25 +253,37 @@ public struct Vector: Sendable, Hashable, Comparable {
     public func detached() -> Self {
         switch storage {
         case .int8(let elements):
-            return Self(storage: .int8(Array(elements)[...]))
+            return Self(int8: Array(elements))
         case .int16(let elements):
-            return Self(storage: .int16(Array(elements)[...]))
+            return Self(int16: Array(elements))
         case .int32(let elements):
-            return Self(storage: .int32(Array(elements)[...]))
+            return Self(int32: Array(elements))
         case .int64(let elements):
-            return Self(storage: .int64(Array(elements)[...]))
+            return Self(int64: Array(elements))
         case .uint8(let elements):
-            return Self(storage: .uint8(Array(elements)[...]))
+            return Self(uint8: Array(elements))
         case .uint16(let elements):
-            return Self(storage: .uint16(Array(elements)[...]))
+            return Self(uint16: Array(elements))
         case .uint32(let elements):
-            return Self(storage: .uint32(Array(elements)[...]))
+            return Self(uint32: Array(elements))
         case .uint64(let elements):
-            return Self(storage: .uint64(Array(elements)[...]))
+            return Self(uint64: Array(elements))
         case .float32(let elements):
-            return Self(storage: .float32(Array(elements)[...]))
+            do {
+                return try Self(float32: Array(elements))
+            } catch {
+                preconditionFailure(
+                    "A validated Float32 vector became invalid while detaching"
+                )
+            }
         case .float64(let elements):
-            return Self(storage: .float64(Array(elements)[...]))
+            do {
+                return try Self(float64: Array(elements))
+            } catch {
+                preconditionFailure(
+                    "A validated Float64 vector became invalid while detaching"
+                )
+            }
         }
     }
 

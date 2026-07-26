@@ -209,6 +209,12 @@ struct PrimitiveInvariantTests {
             sliceAddress == sourceAddress + UInt(MemoryLayout<Float>.stride)
         )
         #expect(slice.count == 2)
+        #expect(vector.retainedByteCount == 16)
+        #expect(slice.retainedByteCount == 16)
+        #expect(slice.detached().retainedByteCount == 8)
+        let directSlice = try Vector(float32: elements[1..<3])
+        #expect(directSlice.retainedByteCount == nil)
+        #expect(directSlice.detached().retainedByteCount == 8)
         let wideVector = try Vector(float64: [1, 2, 3, 4])
         #expect(vector != wideVector)
         #expect(throws: VectorError.nonFiniteFloat32(index: 1)) {
