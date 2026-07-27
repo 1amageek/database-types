@@ -144,6 +144,16 @@ struct ByteStringTests {
         }
     }
 
+    @Test("Throwing borrows preserve failures")
+    func borrowingPreservesFailures() {
+        let value: ByteString = [0x10, 0x20]
+        #expect(throws: ByteStringTestError.borrowFailed) {
+            _ = try value.withUnsafeBytes { _ in
+                throw ByteStringTestError.borrowFailed
+            }
+        }
+    }
+
     @Test("Ordering is lexicographic")
     func orderingIsLexicographic() {
         #expect(ByteString([0x00, 0xFF]) < ByteString([0x01]))
@@ -184,6 +194,7 @@ struct ByteStringTests {
 
 private enum ByteStringTestError: Error {
     case initializationFailed
+    case borrowFailed
 }
 
 private final class ReleaseProbe: Sendable {

@@ -151,11 +151,14 @@ retained owner
 ```
 
 Use `withUnsafeBytes` for a synchronous borrow. The pointer must not escape the
-closure. Use `detached()` when a small slice must stop retaining a larger
-backing owner. `retainedByteCount` reports the complete retained payload for
-resource admission; it can therefore be larger than a slice's visible `count`.
-It is `nil` only when a value was initialized directly from an `ArraySlice`,
-because that type does not expose the complete allocation it retains.
+closure. Nonthrowing work uses the nonthrowing overload without introducing an
+error container; throwing work uses the throwing overload and preserves the
+original failure. Neither overload materializes the visible bytes. Use
+`detached()` when a small slice must stop retaining a larger backing owner.
+`retainedByteCount` reports the complete retained payload for resource
+admission; it can therefore be larger than a slice's visible `count`. It is
+`nil` only when a value was initialized directly from an `ArraySlice`, because
+that type does not expose the complete allocation it retains.
 
 `Vector` follows the same ownership contract. A subvector keeps its original
 numeric payload, `retainedByteCount` reports that complete payload when known,

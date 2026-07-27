@@ -167,6 +167,58 @@ public struct ByteString:
     ///
     /// The pointer must not escape `body`.
     public func withUnsafeBytes<Result>(
+        _ body: (UnsafeRawBufferPointer) -> Result
+    ) -> Result {
+        switch backing {
+        case .retainedArray(let bytes):
+            return bytes.withUnsafeBytes { source in
+                body(
+                    UnsafeRawBufferPointer(
+                        rebasing: source[visibleRange]
+                    )
+                )
+            }
+        case .retainedSlice(let bytes):
+            return bytes.withUnsafeBytes { source in
+                body(
+                    UnsafeRawBufferPointer(
+                        rebasing: source[visibleRange]
+                    )
+                )
+            }
+        case .externalOwner(let owner):
+            var outcome: ByteStringBorrowOutcome<Result> = .missing
+            owner.borrowBytes { source in
+                precondition(source.count == owner.count)
+                precondition(source.isEmpty || source.baseAddress != nil)
+                guard case .missing = outcome else {
+                    preconditionFailure(
+                        "ByteStringOwner invoked its borrow closure more than once"
+                    )
+                }
+                outcome = .value(
+                    body(
+                        UnsafeRawBufferPointer(
+                            rebasing: source[visibleRange]
+                        )
+                    )
+                )
+            }
+            switch outcome {
+            case .missing:
+                preconditionFailure(
+                    "ByteStringOwner did not invoke its borrow closure"
+                )
+            case .value(let result):
+                return result
+            }
+        }
+    }
+
+    /// Exposes contiguous storage to a throwing synchronous borrow.
+    ///
+    /// The pointer must not escape `body`.
+    public func withUnsafeBytes<Result>(
         _ body: (UnsafeRawBufferPointer) throws -> Result
     ) rethrows -> Result {
         switch backing {
