@@ -164,6 +164,16 @@ struct ByteStringTests {
         #expect(result == [0x10, 0x20, 0x30])
     }
 
+    @Test("Appending bytes preserves order and empty identity")
+    func appendingBytesPreservesOrder() {
+        let source: ByteString = [0x10, 0x20]
+        let suffix: ByteString = [0x30, 0x40]
+
+        #expect(source.appending(contentsOf: suffix) == [0x10, 0x20, 0x30, 0x40])
+        #expect(source.appending(contentsOf: ByteString()) == source)
+        #expect(ByteString().appending(contentsOf: suffix) == suffix)
+    }
+
     @Test("Ordering is lexicographic")
     func orderingIsLexicographic() {
         #expect(ByteString([0x00, 0xFF]) < ByteString([0x01]))

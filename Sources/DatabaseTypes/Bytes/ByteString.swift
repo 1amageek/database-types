@@ -320,6 +320,28 @@ public struct ByteString:
         }
     }
 
+    /// Returns the concatenation using one final allocation.
+    public func appending(contentsOf suffix: ByteString) -> ByteString {
+        guard !suffix.isEmpty else { return self }
+        guard !isEmpty else { return suffix }
+        let (resultCount, overflow) = count.addingReportingOverflow(
+            suffix.count
+        )
+        precondition(!overflow, "ByteString size overflow")
+        return ByteString.copying(count: resultCount) { destination in
+            withUnsafeBytes { source in
+                UnsafeMutableRawBufferPointer(
+                    rebasing: destination[..<source.count]
+                ).copyMemory(from: source)
+            }
+            suffix.withUnsafeBytes { source in
+                UnsafeMutableRawBufferPointer(
+                    rebasing: destination[count..<resultCount]
+                ).copyMemory(from: source)
+            }
+        }
+    }
+
     public static func == (
         lhs: ByteString,
         rhs: ByteString
