@@ -154,6 +154,16 @@ struct ByteStringTests {
         }
     }
 
+    @Test("Appending a byte preserves the source and adds a suffix")
+    func appendingByteAddsSuffix() {
+        let source: ByteString = [0x10, 0x20]
+
+        let result = source.appending(0x30)
+
+        #expect(source == [0x10, 0x20])
+        #expect(result == [0x10, 0x20, 0x30])
+    }
+
     @Test("Ordering is lexicographic")
     func orderingIsLexicographic() {
         #expect(ByteString([0x00, 0xFF]) < ByteString([0x01]))

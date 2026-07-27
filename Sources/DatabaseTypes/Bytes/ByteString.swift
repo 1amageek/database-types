@@ -306,6 +306,20 @@ public struct ByteString:
         }
     }
 
+    /// Returns a byte string with one byte appended using one final allocation.
+    public func appending(_ byte: UInt8) -> ByteString {
+        let (resultCount, overflow) = count.addingReportingOverflow(1)
+        precondition(!overflow, "ByteString size overflow")
+        return ByteString.copying(count: resultCount) { destination in
+            withUnsafeBytes { source in
+                UnsafeMutableRawBufferPointer(
+                    rebasing: destination[..<source.count]
+                ).copyMemory(from: source)
+            }
+            destination[count] = byte
+        }
+    }
+
     public static func == (
         lhs: ByteString,
         rhs: ByteString
