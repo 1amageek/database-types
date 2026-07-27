@@ -47,6 +47,18 @@ public struct ByteString:
         self.indexBase = 0
     }
 
+    /// Encodes a string directly into final UTF-8 byte storage.
+    public init(utf8 string: String) {
+        let utf8 = string.utf8
+        self = ByteString.copying(count: utf8.count) { destination in
+            var offset = 0
+            for byte in utf8 {
+                destination[offset] = byte
+                offset += 1
+            }
+        }
+    }
+
     /// Retains an immutable external owner without copying its bytes.
     public init(retaining owner: any ByteStringOwner) {
         precondition(owner.count >= 0)

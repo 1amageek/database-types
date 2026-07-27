@@ -164,6 +164,11 @@ struct ByteStringTests {
         #expect(result == [0x10, 0x20, 0x30])
     }
 
+    @Test("UTF-8 initialization writes canonical bytes")
+    func utf8InitializationWritesCanonicalBytes() {
+        #expect(ByteString(utf8: "Aé") == [0x41, 0xC3, 0xA9])
+    }
+
     @Test("Appending bytes preserves order and empty identity")
     func appendingBytesPreservesOrder() {
         let source: ByteString = [0x10, 0x20]
