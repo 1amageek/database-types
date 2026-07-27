@@ -99,26 +99,33 @@ public struct ByteString:
             return ByteString()
         }
 
-        var initializationFailure: Failure?
+        var initializationResult: Result<Void, Failure>?
         let bytes = [UInt8](unsafeUninitializedCapacity: count) {
             buffer,
             initializedCount in
-            do {
+            let result = Result<Void, Failure>(catching: {
+                () throws(Failure) -> Void in
                 try initialize(UnsafeMutableRawBufferPointer(buffer))
+            })
+            initializationResult = result
+            switch result {
+            case .success:
                 initializedCount = count
-            } catch let failure as Failure {
-                initializationFailure = failure
+            case .failure:
                 initializedCount = 0
-            } catch {
-                preconditionFailure(
-                    "Byte string initialization threw an unexpected error type"
-                )
             }
         }
-        if let initializationFailure {
-            throw initializationFailure
+        guard let initializationResult else {
+            preconditionFailure(
+                "Byte string storage did not invoke its initializer"
+            )
         }
-        return ByteString(bytes)
+        switch initializationResult {
+        case .success:
+            return ByteString(bytes)
+        case .failure(let failure):
+            throw failure
+        }
     }
 
     public var startIndex: Int { indexBase }
