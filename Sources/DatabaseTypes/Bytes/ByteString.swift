@@ -40,6 +40,11 @@ public struct ByteString:
         self.indexBase = 0
     }
 
+    /// Creates a byte string by allocating and filling its final storage once.
+    public init(repeating byte: UInt8, count: Int) {
+        self.init([UInt8](repeating: byte, count: count))
+    }
+
     /// Retains the slice's copy-on-write storage without materializing bytes.
     public init(_ bytes: ArraySlice<UInt8>) {
         self.backing = .retainedSlice(bytes)

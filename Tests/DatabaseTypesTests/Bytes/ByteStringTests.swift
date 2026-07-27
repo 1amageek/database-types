@@ -25,6 +25,12 @@ struct ByteStringTests {
         #expect(value[0] == 0x10)
     }
 
+    @Test("Repeating initialization fills the requested byte count")
+    func repeatingInitialization() {
+        #expect(ByteString(repeating: 0xA5, count: 4) == [0xA5, 0xA5, 0xA5, 0xA5])
+        #expect(ByteString(repeating: 0xA5, count: 0).isEmpty)
+    }
+
     @Test("ArraySlice initialization retains visible storage without copying")
     func arraySliceInitializationSharesStorage() throws {
         var source: [UInt8] = [0x10, 0x20, 0x30, 0x40, 0x50]
