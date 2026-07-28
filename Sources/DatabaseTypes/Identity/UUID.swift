@@ -27,12 +27,15 @@ public struct UUID:
 
         var high: UInt64 = 0
         var low: UInt64 = 0
-        for (offset, byte) in bytes.enumerated() {
+        var position = bytes.startIndex
+        for offset in 0..<16 {
+            let byte = bytes[position]
             if offset < 8 {
                 high = (high << 8) | UInt64(byte)
             } else {
                 low = (low << 8) | UInt64(byte)
             }
+            bytes.formIndex(after: &position)
         }
         self.init(high: high, low: low)
     }
