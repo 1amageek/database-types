@@ -141,8 +141,9 @@ consumer applies an explicit time-zone and resolution policy.
 
 ### Byte ownership
 
-`ByteString` retains array, slice, or external immutable storage and creates
-bounded slices without copying payload bytes:
+`ByteString` stores one immutable owner and one visible range. Array, slice,
+and external inputs are adapted to that single representation, and bounded
+slices reuse it without copying payload bytes:
 
 ```text
 retained owner
@@ -155,10 +156,11 @@ closure. Nonthrowing work uses the nonthrowing overload without introducing an
 error container; throwing work uses the throwing overload and preserves the
 original failure. Neither overload materializes the visible bytes. Use
 `detached()` when a small slice must stop retaining a larger backing owner.
-`retainedByteCount` reports the complete retained payload for resource
-admission; it can therefore be larger than a slice's visible `count`. It is
-`nil` only when a value was initialized directly from an `ArraySlice`, because
-that type does not expose the complete allocation it retains.
+`retainedByteCount` reports the complete retained allocation for resource
+admission and can therefore be larger than a slice's visible `count`. It is
+`nil` whenever the owner cannot measure that allocation accurately. Visible
+`count` is never substituted for unknown retained memory. This includes direct
+`ArraySlice` values and backend result owners that retain an opaque batch.
 
 `Vector` follows the same ownership contract. A subvector keeps its original
 numeric payload, `retainedByteCount` reports that complete payload when known,

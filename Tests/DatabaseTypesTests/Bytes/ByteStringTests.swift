@@ -90,7 +90,8 @@ struct ByteStringTests {
     @Test("External owners are borrowed without copying")
     func externalOwnerIsBorrowed() throws {
         let owner = TestByteStringOwner(
-            bytes: [0x10, 0x20, 0x30, 0x40]
+            bytes: [0x10, 0x20, 0x30, 0x40],
+            retainedByteCount: 4
         )
         let value = ByteString(retaining: owner)
         let ownerAddress = try #require(
@@ -112,6 +113,7 @@ struct ByteStringTests {
         let releaseProbe = ReleaseProbe()
         var owner: TestByteStringOwner? = TestByteStringOwner(
             bytes: [0x10, 0x20, 0x30, 0x40],
+            retainedByteCount: 4,
             releaseProbe: releaseProbe
         )
         var value: ByteString? = ByteString(retaining: owner!)
@@ -137,6 +139,47 @@ struct ByteStringTests {
         slice = nil
         #expect(releaseProbe.count == 1)
         #expect(detached == [0x20, 0x30])
+    }
+
+    @Test("External owners distinguish visible bytes from retained memory")
+    func externalOwnerRetainedMemoryAccounting() {
+        let unknownOwner = TestByteStringOwner(
+            bytes: [0x10, 0x20],
+            retainedByteCount: nil
+        )
+        let largerOwner = TestByteStringOwner(
+            bytes: [0x10, 0x20],
+            retainedByteCount: 4_096
+        )
+
+        let unknown = ByteString(retaining: unknownOwner)
+        let larger = ByteString(retaining: largerOwner)
+
+        #expect(unknown.count == 2)
+        #expect(unknown.retainedByteCount == nil)
+        #expect(unknown.detached().retainedByteCount == 2)
+        #expect(larger.count == 2)
+        #expect(larger.retainedByteCount == 4_096)
+        #expect(larger.detached().retainedByteCount == 2)
+    }
+
+    @Test("Hash collections preserve distinct owner-backed values")
+    func hashCollectionBehavior() {
+        let first = ByteString(retaining: TestByteStringOwner(
+            bytes: [0x10, 0x20],
+            retainedByteCount: 2
+        ))
+        let second = ByteString(retaining: TestByteStringOwner(
+            bytes: [0x30, 0x40],
+            retainedByteCount: 2
+        ))
+
+        #expect(Set([first, second]).count == 2)
+        #expect(Set([first, first]).count == 1)
+        #expect(Dictionary(uniqueKeysWithValues: [
+            (first, 1),
+            (second, 2),
+        ])[second] == 2)
     }
 
     @Test("Exact-size initialization preserves typed failures")
@@ -242,13 +285,16 @@ private final class ReleaseProbe: Sendable {
 
 private final class TestByteStringOwner: ByteStringOwner {
     let bytes: [UInt8]
+    let retainedByteCount: Int?
     let releaseProbe: ReleaseProbe?
 
     init(
         bytes: [UInt8],
+        retainedByteCount: Int?,
         releaseProbe: ReleaseProbe? = nil
     ) {
         self.bytes = bytes
+        self.retainedByteCount = retainedByteCount
         self.releaseProbe = releaseProbe
     }
 

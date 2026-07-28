@@ -14,30 +14,18 @@ public struct ByteString:
     public typealias SubSequence = ByteString
     public typealias ArrayLiteralElement = UInt8
 
-    private enum Backing: Sendable {
-        case retainedArray([UInt8])
-        case retainedSlice(ArraySlice<UInt8>)
-        case externalOwner(any ByteStringOwner)
-    }
-
-    private let backing: Backing
+    private let owner: any ByteStringOwner
     private let visibleRange: Range<Int>
-    /// The logical index of the first visible byte. Slices keep the parent's
-    /// index space so that `SubSequence` indices remain valid in the parent,
-    /// as `Collection` requires.
-    private let indexBase: Int
 
     public init() {
-        self.backing = .retainedArray([])
+        self.owner = ArrayByteStringOwner([])
         self.visibleRange = 0..<0
-        self.indexBase = 0
     }
 
     /// Retains the array's copy-on-write storage.
     public init(_ bytes: [UInt8]) {
-        self.backing = .retainedArray(bytes)
+        self.owner = ArrayByteStringOwner(bytes)
         self.visibleRange = 0..<bytes.count
-        self.indexBase = 0
     }
 
     /// Creates a byte string by allocating and filling its final storage once.
@@ -47,9 +35,8 @@ public struct ByteString:
 
     /// Retains the slice's copy-on-write storage without materializing bytes.
     public init(_ bytes: ArraySlice<UInt8>) {
-        self.backing = .retainedSlice(bytes)
+        self.owner = ArraySliceByteStringOwner(bytes)
         self.visibleRange = 0..<bytes.count
-        self.indexBase = 0
     }
 
     /// Encodes a string directly into final UTF-8 byte storage.
@@ -65,11 +52,13 @@ public struct ByteString:
     }
 
     /// Retains an immutable external owner without copying its bytes.
-    public init(retaining owner: any ByteStringOwner) {
+    public init<Owner: ByteStringOwner>(retaining owner: Owner) {
         precondition(owner.count >= 0)
-        self.backing = .externalOwner(owner)
+        if let retainedByteCount = owner.retainedByteCount {
+            precondition(retainedByteCount >= owner.count)
+        }
+        self.owner = owner
         self.visibleRange = 0..<owner.count
-        self.indexBase = 0
     }
 
     public init(arrayLiteral elements: UInt8...) {
@@ -77,13 +66,15 @@ public struct ByteString:
     }
 
     private init(
-        backing: Backing,
-        visibleRange: Range<Int>,
-        indexBase: Int
+        owner: any ByteStringOwner,
+        visibleRange: Range<Int>
     ) {
-        self.backing = backing
+        precondition(
+            visibleRange.lowerBound >= 0
+                && visibleRange.upperBound <= owner.count
+        )
+        self.owner = owner
         self.visibleRange = visibleRange
-        self.indexBase = indexBase
     }
 
     /// Allocates the final byte string storage once.
@@ -145,31 +136,28 @@ public struct ByteString:
         }
     }
 
-    public var startIndex: Int { indexBase }
-    public var endIndex: Int { indexBase + visibleRange.count }
+    public var startIndex: Int { visibleRange.lowerBound }
+    public var endIndex: Int { visibleRange.upperBound }
 
     /// The byte count retained by this value's backing owner, when known.
     ///
     /// A bounded slice can expose fewer bytes through `count` while retaining
     /// the complete owner. Execution layers use this value when admitting
-    /// retained memory before preserving the slice. An `ArraySlice` does not
-    /// expose the allocation that it retains, so values initialized directly
-    /// from one return `nil` until they are detached.
+    /// retained memory before preserving the slice. The value is `nil` when an
+    /// owner cannot measure the complete allocation accurately. The visible
+    /// byte count is never substituted for unknown retained memory.
     public var retainedByteCount: Int? {
-        switch backing {
-        case .retainedArray(let bytes):
-            return bytes.count
-        case .retainedSlice:
+        guard let retainedByteCount = owner.retainedByteCount else {
             return nil
-        case .externalOwner(let owner):
-            return owner.count
         }
+        precondition(retainedByteCount >= owner.count)
+        return retainedByteCount
     }
 
     public subscript(position: Int) -> UInt8 {
         precondition(indices.contains(position))
         return withUnsafeBytes { bytes in
-            bytes[position - indexBase]
+            bytes[position - startIndex]
         }
     }
 
@@ -178,12 +166,9 @@ public struct ByteString:
             bounds.lowerBound >= startIndex
                 && bounds.upperBound <= endIndex
         )
-        let lower = visibleRange.lowerBound + (bounds.lowerBound - indexBase)
-        let upper = visibleRange.lowerBound + (bounds.upperBound - indexBase)
         return ByteString(
-            backing: backing,
-            visibleRange: lower..<upper,
-            indexBase: bounds.lowerBound
+            owner: owner,
+            visibleRange: bounds
         )
     }
 
@@ -191,103 +176,27 @@ public struct ByteString:
     ///
     /// The pointer must not escape `body`.
     public func withUnsafeBytes<Result>(
-        _ body: (UnsafeRawBufferPointer) -> Result
-    ) -> Result {
-        switch backing {
-        case .retainedArray(let bytes):
-            return bytes.withUnsafeBytes { source in
-                body(
-                    UnsafeRawBufferPointer(
-                        rebasing: source[visibleRange]
-                    )
-                )
-            }
-        case .retainedSlice(let bytes):
-            return bytes.withUnsafeBytes { source in
-                body(
-                    UnsafeRawBufferPointer(
-                        rebasing: source[visibleRange]
-                    )
-                )
-            }
-        case .externalOwner(let owner):
-            var outcome: ByteStringBorrowOutcome<Result> = .missing
-            owner.borrowBytes { source in
-                precondition(source.count == owner.count)
-                precondition(source.isEmpty || source.baseAddress != nil)
-                guard case .missing = outcome else {
-                    preconditionFailure(
-                        "ByteStringOwner invoked its borrow closure more than once"
-                    )
-                }
-                outcome = .value(
-                    body(
-                        UnsafeRawBufferPointer(
-                            rebasing: source[visibleRange]
-                        )
-                    )
-                )
-            }
-            switch outcome {
-            case .missing:
-                preconditionFailure(
-                    "ByteStringOwner did not invoke its borrow closure"
-                )
-            case .value(let result):
-                return result
-            }
-        }
-    }
-
-    /// Exposes contiguous storage to a throwing synchronous borrow.
-    ///
-    /// The pointer must not escape `body`.
-    public func withUnsafeBytes<Result>(
         _ body: (UnsafeRawBufferPointer) throws -> Result
     ) rethrows -> Result {
-        switch backing {
-        case .retainedArray(let bytes):
-            return try bytes.withUnsafeBytes { source in
-                try body(
-                    UnsafeRawBufferPointer(
-                        rebasing: source[visibleRange]
-                    )
-                )
-            }
-        case .retainedSlice(let bytes):
-            return try bytes.withUnsafeBytes { source in
-                try body(
-                    UnsafeRawBufferPointer(
-                        rebasing: source[visibleRange]
-                    )
-                )
-            }
-        case .externalOwner(let owner):
-            var outcome: ByteStringBorrowOutcome<Result> = .missing
-            try owner.borrowBytes { source in
-                precondition(source.count == owner.count)
-                precondition(source.isEmpty || source.baseAddress != nil)
-                guard case .missing = outcome else {
-                    preconditionFailure(
-                        "ByteStringOwner invoked its borrow closure more than once"
-                    )
-                }
-                outcome = .value(
-                    try body(
-                        UnsafeRawBufferPointer(
-                            rebasing: source[visibleRange]
-                        )
-                    )
-                )
-            }
-            switch outcome {
-            case .missing:
+        var outcome: ByteStringBorrowOutcome<Result> = .missing
+        try owner.borrowBytes { source in
+            Self.validate(source, for: owner)
+            guard case .missing = outcome else {
                 preconditionFailure(
-                    "ByteStringOwner did not invoke its borrow closure"
+                    "ByteStringOwner invoked its borrow closure more than once"
                 )
-            case .value(let result):
-                return result
             }
+            outcome = .value(try body(
+                UnsafeRawBufferPointer(rebasing: source[visibleRange])
+            ))
+        }
+        switch outcome {
+        case .missing:
+            preconditionFailure(
+                "ByteStringOwner did not invoke its borrow closure"
+            )
+        case .value(let result):
+            return result
         }
     }
 
@@ -312,8 +221,8 @@ public struct ByteString:
         guard !isEmpty else {
             return ByteString()
         }
-        if case .retainedArray(let bytes) = backing,
-           visibleRange == bytes.indices {
+        if visibleRange == 0..<owner.count,
+           owner.retainedByteCount == count {
             return self
         }
         return ByteString.copying(count: count) { destination in
@@ -398,9 +307,56 @@ public struct ByteString:
             }
         }
     }
+
+    private static func validate(
+        _ bytes: UnsafeRawBufferPointer,
+        for owner: any ByteStringOwner
+    ) {
+        precondition(
+            bytes.count == owner.count,
+            "ByteStringOwner returned an inconsistent byte count"
+        )
+        precondition(
+            bytes.isEmpty || bytes.baseAddress != nil,
+            "ByteStringOwner returned no address for nonempty bytes"
+        )
+    }
 }
 
 private enum ByteStringBorrowOutcome<Value> {
     case missing
     case value(Value)
+}
+
+private struct ArrayByteStringOwner: ByteStringOwner {
+    let bytes: [UInt8]
+
+    init(_ bytes: [UInt8]) {
+        self.bytes = bytes
+    }
+
+    var count: Int { bytes.count }
+    var retainedByteCount: Int? { bytes.count }
+
+    func borrowBytes(
+        _ body: (UnsafeRawBufferPointer) throws -> Void
+    ) rethrows {
+        try bytes.withUnsafeBytes(body)
+    }
+}
+
+private struct ArraySliceByteStringOwner: ByteStringOwner {
+    let bytes: ArraySlice<UInt8>
+
+    init(_ bytes: ArraySlice<UInt8>) {
+        self.bytes = bytes
+    }
+
+    var count: Int { bytes.count }
+
+    func borrowBytes(
+        _ body: (UnsafeRawBufferPointer) throws -> Void
+    ) rethrows {
+        try bytes.withUnsafeBytes(body)
+    }
 }

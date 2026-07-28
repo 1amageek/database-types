@@ -235,10 +235,14 @@ belong to their semantic layers.
 
 ## Zero-copy contract
 
-- `ByteString` retains `Array`, `ArraySlice`, or external immutable ownership.
+- `ByteString` has one stable immutable owner and one visible byte range;
+  `Array`, `ArraySlice`, and external storage are owner implementations rather
+  than alternate `ByteString` storage modes.
 - `Vector` retains immutable `Array` or `ArraySlice` storage.
 - slices retain their original storage and do not copy payload elements.
 - pointer access is scoped to synchronous borrowing closures.
+- a byte owner reports the complete retained allocation only when it can do so
+  accurately; visible byte count does not stand in for unknown retained memory.
 - adapters may copy only at an output API that cannot retain the original
   owner.
 - wire and storage layers consume borrows directly and must not materialize
