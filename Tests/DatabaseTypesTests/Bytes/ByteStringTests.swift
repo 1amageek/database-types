@@ -26,7 +26,7 @@ struct ByteStringTests {
     }
 
     @Test("Array ownership accounts for reserved byte capacity")
-    func arrayOwnershipAccountsForReservedCapacity() {
+    func arrayOwnershipAccountsForReservedCapacity() throws {
         var source: [UInt8] = [0x10, 0x20]
         source.reserveCapacity(64)
         let retainedCapacity = source.capacity
@@ -36,6 +36,16 @@ struct ByteStringTests {
         #expect(value.count == 2)
         #expect(value.retainedByteCount == retainedCapacity)
         #expect(retainedCapacity >= 64)
+
+        let valueAddress = try #require(
+            value.withUnsafeBytes { $0.baseAddress.map(UInt.init(bitPattern:)) }
+        )
+        let detachedAddress = try #require(
+            value.detached().withUnsafeBytes {
+                $0.baseAddress.map(UInt.init(bitPattern:))
+            }
+        )
+        #expect(detachedAddress == valueAddress)
     }
 
     @Test("Repeating initialization fills the requested byte count")

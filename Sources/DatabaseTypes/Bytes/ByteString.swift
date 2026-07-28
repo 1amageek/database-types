@@ -221,9 +221,11 @@ public struct ByteString:
         guard !isEmpty else {
             return ByteString()
         }
-        if visibleRange == 0..<owner.count,
-           owner.retainedByteCount == count {
-            return self
+        if visibleRange == 0..<owner.count {
+            if owner is ArrayByteStringOwner
+                || owner.retainedByteCount == count {
+                return self
+            }
         }
         return ByteString.copying(count: count) { destination in
             withUnsafeBytes { source in

@@ -228,7 +228,7 @@ struct PrimitiveInvariantTests {
     }
 
     @Test("Vector ownership accounts for reserved scalar capacity")
-    func vectorOwnershipAccountsForReservedCapacity() {
+    func vectorOwnershipAccountsForReservedCapacity() throws {
         var elements: [Int32] = [1, 2]
         elements.reserveCapacity(64)
         let retainedCapacity = elements.capacity
@@ -238,6 +238,18 @@ struct PrimitiveInvariantTests {
         #expect(vector.count == 2)
         #expect(vector.retainedByteCount == retainedCapacity * 4)
         #expect(retainedCapacity >= 64)
+
+        let vectorAddress = try #require(
+            vector.withInt32Elements { buffer in
+                UInt(bitPattern: try #require(buffer.baseAddress))
+            }
+        )
+        let detachedAddress = try #require(
+            vector.detached().withInt32Elements { buffer in
+                UInt(bitPattern: try #require(buffer.baseAddress))
+            }
+        )
+        #expect(detachedAddress == vectorAddress)
     }
 
     @Test("Vector preserves every fixed-width integer representation")
