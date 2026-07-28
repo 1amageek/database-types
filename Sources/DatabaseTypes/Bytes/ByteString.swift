@@ -336,7 +336,7 @@ private struct ArrayByteStringOwner: ByteStringOwner {
     }
 
     var count: Int { bytes.count }
-    var retainedByteCount: Int? { bytes.count }
+    var retainedByteCount: Int? { bytes.capacity }
 
     func borrowBytes(
         _ body: (UnsafeRawBufferPointer) throws -> Void

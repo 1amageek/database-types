@@ -25,6 +25,19 @@ struct ByteStringTests {
         #expect(value[0] == 0x10)
     }
 
+    @Test("Array ownership accounts for reserved byte capacity")
+    func arrayOwnershipAccountsForReservedCapacity() {
+        var source: [UInt8] = [0x10, 0x20]
+        source.reserveCapacity(64)
+        let retainedCapacity = source.capacity
+
+        let value = ByteString(source)
+
+        #expect(value.count == 2)
+        #expect(value.retainedByteCount == retainedCapacity)
+        #expect(retainedCapacity >= 64)
+    }
+
     @Test("Repeating initialization fills the requested byte count")
     func repeatingInitialization() {
         #expect(ByteString(repeating: 0xA5, count: 4) == [0xA5, 0xA5, 0xA5, 0xA5])
@@ -63,7 +76,7 @@ struct ByteStringTests {
         )
         #expect(detachedAddress != valueAddress)
         #expect(detached == value)
-        #expect(detached.retainedByteCount == 3)
+        #expect(try #require(detached.retainedByteCount) >= detached.count)
     }
 
     @Test("Slices retain the same backing storage")
@@ -132,7 +145,7 @@ struct ByteStringTests {
 
         #expect(sliceAddress != detachedAddress)
         #expect(slice?.retainedByteCount == 4)
-        #expect(detached.retainedByteCount == 2)
+        #expect(try #require(detached.retainedByteCount) >= detached.count)
         owner = nil
         value = nil
         #expect(releaseProbe.count == 0)
@@ -142,7 +155,7 @@ struct ByteStringTests {
     }
 
     @Test("External owners distinguish visible bytes from retained memory")
-    func externalOwnerRetainedMemoryAccounting() {
+    func externalOwnerRetainedMemoryAccounting() throws {
         let unknownOwner = TestByteStringOwner(
             bytes: [0x10, 0x20],
             retainedByteCount: nil
@@ -157,10 +170,19 @@ struct ByteStringTests {
 
         #expect(unknown.count == 2)
         #expect(unknown.retainedByteCount == nil)
-        #expect(unknown.detached().retainedByteCount == 2)
+        let detachedUnknown = unknown.detached()
+        #expect(
+            try #require(detachedUnknown.retainedByteCount)
+                >= detachedUnknown.count
+        )
         #expect(larger.count == 2)
         #expect(larger.retainedByteCount == 4_096)
-        #expect(larger.detached().retainedByteCount == 2)
+        let detachedLarger = larger.detached()
+        let detachedLargerRetainedBytes = try #require(
+            detachedLarger.retainedByteCount
+        )
+        #expect(detachedLargerRetainedBytes >= detachedLarger.count)
+        #expect(detachedLargerRetainedBytes < 4_096)
     }
 
     @Test("Hash collections preserve distinct owner-backed values")

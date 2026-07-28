@@ -152,19 +152,21 @@ retained owner
 ```
 
 Use `withUnsafeBytes` for a synchronous borrow. The pointer must not escape the
-closure. Nonthrowing work uses the nonthrowing overload without introducing an
-error container; throwing work uses the throwing overload and preserves the
-original failure. Neither overload materializes the visible bytes. Use
+closure. Its `rethrows` contract adds no failure path to nonthrowing work and
+preserves the original failure for throwing work. The borrow does not
+materialize the visible bytes. Use
 `detached()` when a small slice must stop retaining a larger backing owner.
 `retainedByteCount` reports the complete retained allocation for resource
 admission and can therefore be larger than a slice's visible `count`. It is
 `nil` whenever the owner cannot measure that allocation accurately. Visible
 `count` is never substituted for unknown retained memory. This includes direct
-`ArraySlice` values and backend result owners that retain an opaque batch.
+`ArraySlice` values and backend result owners that retain an opaque batch. For
+an owned Swift `Array`, the reported value includes reserved element capacity,
+not only initialized elements.
 
 `Vector` follows the same ownership contract. A subvector keeps its original
-numeric payload, `retainedByteCount` reports that complete payload when known,
-and
+numeric allocation, `retainedByteCount` includes reserved scalar capacity when
+known, and
 `detached()` creates an independently owned visible vector when releasing the
 larger owner matters.
 

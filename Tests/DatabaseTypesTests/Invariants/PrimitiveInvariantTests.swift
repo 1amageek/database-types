@@ -209,17 +209,35 @@ struct PrimitiveInvariantTests {
             sliceAddress == sourceAddress + UInt(MemoryLayout<Float>.stride)
         )
         #expect(slice.count == 2)
-        #expect(vector.retainedByteCount == 16)
-        #expect(slice.retainedByteCount == 16)
-        #expect(slice.detached().retainedByteCount == 8)
+        let sourceRetainedByteCount = elements.capacity * 4
+        #expect(vector.retainedByteCount == sourceRetainedByteCount)
+        #expect(slice.retainedByteCount == sourceRetainedByteCount)
+        let detachedSlice = slice.detached()
+        #expect(detachedSlice.count == 2)
+        #expect(try #require(detachedSlice.retainedByteCount) >= 8)
         let directSlice = try Vector(float32: elements[1..<3])
         #expect(directSlice.retainedByteCount == nil)
-        #expect(directSlice.detached().retainedByteCount == 8)
+        let detachedDirectSlice = directSlice.detached()
+        #expect(detachedDirectSlice.count == 2)
+        #expect(try #require(detachedDirectSlice.retainedByteCount) >= 8)
         let wideVector = try Vector(float64: [1, 2, 3, 4])
         #expect(vector != wideVector)
         #expect(throws: VectorError.nonFiniteFloat32(index: 1)) {
             _ = try Vector(float32: [0, .nan])
         }
+    }
+
+    @Test("Vector ownership accounts for reserved scalar capacity")
+    func vectorOwnershipAccountsForReservedCapacity() {
+        var elements: [Int32] = [1, 2]
+        elements.reserveCapacity(64)
+        let retainedCapacity = elements.capacity
+
+        let vector = Vector(int32: elements)
+
+        #expect(vector.count == 2)
+        #expect(vector.retainedByteCount == retainedCapacity * 4)
+        #expect(retainedCapacity >= 64)
     }
 
     @Test("Vector preserves every fixed-width integer representation")

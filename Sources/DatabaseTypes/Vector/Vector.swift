@@ -23,7 +23,7 @@ public struct Vector: Sendable, Hashable, Comparable {
 
     public init(int8 elements: [Int8]) {
         self.storage = .int8(elements[...])
-        self.retainedElementCount = elements.count
+        self.retainedElementCount = elements.capacity
     }
 
     public init(int8 elements: ArraySlice<Int8>) {
@@ -33,7 +33,7 @@ public struct Vector: Sendable, Hashable, Comparable {
 
     public init(int16 elements: [Int16]) {
         self.storage = .int16(elements[...])
-        self.retainedElementCount = elements.count
+        self.retainedElementCount = elements.capacity
     }
 
     public init(int16 elements: ArraySlice<Int16>) {
@@ -43,7 +43,7 @@ public struct Vector: Sendable, Hashable, Comparable {
 
     public init(int32 elements: [Int32]) {
         self.storage = .int32(elements[...])
-        self.retainedElementCount = elements.count
+        self.retainedElementCount = elements.capacity
     }
 
     public init(int32 elements: ArraySlice<Int32>) {
@@ -53,7 +53,7 @@ public struct Vector: Sendable, Hashable, Comparable {
 
     public init(int64 elements: [Int64]) {
         self.storage = .int64(elements[...])
-        self.retainedElementCount = elements.count
+        self.retainedElementCount = elements.capacity
     }
 
     public init(int64 elements: ArraySlice<Int64>) {
@@ -63,7 +63,7 @@ public struct Vector: Sendable, Hashable, Comparable {
 
     public init(uint8 elements: [UInt8]) {
         self.storage = .uint8(elements[...])
-        self.retainedElementCount = elements.count
+        self.retainedElementCount = elements.capacity
     }
 
     public init(uint8 elements: ArraySlice<UInt8>) {
@@ -73,7 +73,7 @@ public struct Vector: Sendable, Hashable, Comparable {
 
     public init(uint16 elements: [UInt16]) {
         self.storage = .uint16(elements[...])
-        self.retainedElementCount = elements.count
+        self.retainedElementCount = elements.capacity
     }
 
     public init(uint16 elements: ArraySlice<UInt16>) {
@@ -83,7 +83,7 @@ public struct Vector: Sendable, Hashable, Comparable {
 
     public init(uint32 elements: [UInt32]) {
         self.storage = .uint32(elements[...])
-        self.retainedElementCount = elements.count
+        self.retainedElementCount = elements.capacity
     }
 
     public init(uint32 elements: ArraySlice<UInt32>) {
@@ -93,7 +93,7 @@ public struct Vector: Sendable, Hashable, Comparable {
 
     public init(uint64 elements: [UInt64]) {
         self.storage = .uint64(elements[...])
-        self.retainedElementCount = elements.count
+        self.retainedElementCount = elements.capacity
     }
 
     public init(uint64 elements: ArraySlice<UInt64>) {
@@ -108,7 +108,7 @@ public struct Vector: Sendable, Hashable, Comparable {
             }
         }
         self.storage = .float32(elements[...])
-        self.retainedElementCount = elements.count
+        self.retainedElementCount = elements.capacity
     }
 
     public init(float32 elements: ArraySlice<Float>) throws(VectorError) {
@@ -128,7 +128,7 @@ public struct Vector: Sendable, Hashable, Comparable {
             }
         }
         self.storage = .float64(elements[...])
-        self.retainedElementCount = elements.count
+        self.retainedElementCount = elements.capacity
     }
 
     public init(float64 elements: ArraySlice<Double>) throws(VectorError) {
@@ -251,6 +251,9 @@ public struct Vector: Sendable, Hashable, Comparable {
     /// Use this when a small subvector must stop retaining a larger source
     /// buffer.
     public func detached() -> Self {
+        if retainedElementCount == count {
+            return self
+        }
         switch storage {
         case .int8(let elements):
             return Self(int8: Array(elements))
