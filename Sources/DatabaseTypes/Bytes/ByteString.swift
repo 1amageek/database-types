@@ -178,26 +178,26 @@ public struct ByteString:
     public func withUnsafeBytes<Result>(
         _ body: (UnsafeRawBufferPointer) throws -> Result
     ) rethrows -> Result {
-        var outcome: ByteStringBorrowOutcome<Result> = .missing
+        var result: Result?
+        var didInvokeBody = false
         try owner.borrowBytes { source in
             Self.validate(source, for: owner)
-            guard case .missing = outcome else {
+            guard !didInvokeBody else {
                 preconditionFailure(
                     "ByteStringOwner invoked its borrow closure more than once"
                 )
             }
-            outcome = .value(try body(
+            didInvokeBody = true
+            result = try body(
                 UnsafeRawBufferPointer(rebasing: source[visibleRange])
-            ))
+            )
         }
-        switch outcome {
-        case .missing:
+        guard didInvokeBody, case .some(let result) = result else {
             preconditionFailure(
                 "ByteStringOwner did not invoke its borrow closure"
             )
-        case .value(let result):
-            return result
         }
+        return result
     }
 
     /// Exposes the byte string to generic contiguous collection algorithms.
@@ -323,11 +323,6 @@ public struct ByteString:
             "ByteStringOwner returned no address for nonempty bytes"
         )
     }
-}
-
-private enum ByteStringBorrowOutcome<Value> {
-    case missing
-    case value(Value)
 }
 
 private struct ArrayByteStringOwner: ByteStringOwner {
