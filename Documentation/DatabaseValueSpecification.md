@@ -241,6 +241,8 @@ belong to their semantic layers.
 - `Vector` retains immutable `Array` or `ArraySlice` storage.
 - slices retain their original storage and do not copy payload elements.
 - pointer access is scoped to synchronous borrowing closures.
+- generic byte-borrow results are specialized in the consuming module; this is
+  part of the standard-WASI execution contract, not an alternate storage mode.
 - a byte owner reports the complete retained allocation only when it can do so
   accurately; visible byte count does not stand in for unknown retained memory.
 - adapters may copy only at an output API that cannot retain the original

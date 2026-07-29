@@ -235,6 +235,23 @@ struct ByteStringTests {
         }
     }
 
+    @Test("Imported borrows preserve structured primitive results")
+    func importedBorrowPreservesStructuredResult() {
+        let value: ByteString = [0x10, 0x20, 0x30]
+
+        let result: FieldValue = value.withUnsafeBytes { bytes in
+            .array([
+                .uint8(bytes[0]),
+                .bytes(value[1..<value.endIndex]),
+            ])
+        }
+
+        #expect(result == .array([
+            .uint8(0x10),
+            .bytes(ByteString([0x20, 0x30])),
+        ]))
+    }
+
     @Test("Appending a byte preserves the source and adds a suffix")
     func appendingByteAddsSuffix() {
         let source: ByteString = [0x10, 0x20]

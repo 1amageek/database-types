@@ -14,8 +14,11 @@ public struct ByteString:
     public typealias SubSequence = ByteString
     public typealias ArrayLiteralElement = UInt8
 
-    private let owner: any ByteStringOwner
-    private let visibleRange: Range<Int>
+    @usableFromInline
+    let owner: any ByteStringOwner
+
+    @usableFromInline
+    let visibleRange: Range<Int>
 
     public init() {
         self.owner = ArrayByteStringOwner([])
@@ -175,6 +178,7 @@ public struct ByteString:
     /// Exposes contiguous storage for one synchronous borrow.
     ///
     /// The pointer must not escape `body`.
+    @inlinable
     public func withUnsafeBytes<Result>(
         _ body: (UnsafeRawBufferPointer) throws -> Result
     ) rethrows -> Result {
@@ -324,7 +328,8 @@ public struct ByteString:
         }
     }
 
-    private static func validate(
+    @usableFromInline
+    static func validate(
         _ bytes: UnsafeRawBufferPointer,
         for owner: any ByteStringOwner
     ) {

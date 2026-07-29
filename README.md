@@ -154,7 +154,9 @@ retained owner
 Use `withUnsafeBytes` for a synchronous borrow. The pointer must not escape the
 closure. Its `rethrows` contract adds no failure path to nonthrowing work and
 preserves the original failure for throwing work. The borrow does not
-materialize the visible bytes. Use
+materialize the visible bytes. Its body is serialized for caller-side
+specialization so imported standard-WASI consumers do not depend on runtime
+construction of cross-module generic result metadata. Use
 `detached()` when a small slice must stop retaining a larger backing owner.
 `retainedByteCount` reports the complete retained allocation for resource
 admission and can therefore be larger than a slice's visible `count`. It is
