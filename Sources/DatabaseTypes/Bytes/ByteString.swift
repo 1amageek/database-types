@@ -178,26 +178,40 @@ public struct ByteString:
     public func withUnsafeBytes<Result>(
         _ body: (UnsafeRawBufferPointer) throws -> Result
     ) rethrows -> Result {
-        var result: Result?
-        var didInvokeBody = false
-        try owner.borrowBytes { source in
-            Self.validate(source, for: owner)
-            guard !didInvokeBody else {
+        try withUnsafeTemporaryAllocation(
+            of: Result.self,
+            capacity: 1
+        ) { resultStorage in
+            let resultAddress = resultStorage.baseAddress!
+            var didInitializeResult = false
+            defer {
+                if didInitializeResult {
+                    resultAddress.deinitialize(count: 1)
+                }
+            }
+            try owner.borrowBytes { source in
+                Self.validate(source, for: owner)
+                guard !didInitializeResult else {
+                    preconditionFailure(
+                        "ByteStringOwner invoked its borrow closure more than once"
+                    )
+                }
+                resultAddress.initialize(to: try body(
+                    UnsafeRawBufferPointer(
+                        rebasing: source[visibleRange]
+                    )
+                ))
+                didInitializeResult = true
+            }
+            guard didInitializeResult else {
                 preconditionFailure(
-                    "ByteStringOwner invoked its borrow closure more than once"
+                    "ByteStringOwner did not invoke its borrow closure"
                 )
             }
-            didInvokeBody = true
-            result = try body(
-                UnsafeRawBufferPointer(rebasing: source[visibleRange])
-            )
+            let result = resultAddress.move()
+            didInitializeResult = false
+            return result
         }
-        guard didInvokeBody, case .some(let result) = result else {
-            preconditionFailure(
-                "ByteStringOwner did not invoke its borrow closure"
-            )
-        }
-        return result
     }
 
     /// Exposes the byte string to generic contiguous collection algorithms.
