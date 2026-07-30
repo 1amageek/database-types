@@ -17,6 +17,15 @@ public protocol ByteStringOwner: Sendable {
     /// substitute.
     var retainedByteCount: Int? { get }
 
+    /// Whether the exposed byte region is already backed by self-contained
+    /// storage.
+    ///
+    /// Return `true` only when copying the complete exposed region cannot
+    /// release an enclosing owner or unrelated retained allocation. This lets
+    /// `ByteString.detached()` preserve already-detached storage without a
+    /// runtime type check.
+    var isStorageSelfContained: Bool { get }
+
     /// Exposes the owned bytes for the duration of one synchronous borrow.
     ///
     /// The implementation must invoke `body` exactly once. The pointer must not
@@ -28,4 +37,8 @@ public protocol ByteStringOwner: Sendable {
 
 public extension ByteStringOwner {
     var retainedByteCount: Int? { nil }
+
+    var isStorageSelfContained: Bool {
+        retainedByteCount == count
+    }
 }

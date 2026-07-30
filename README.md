@@ -151,6 +151,12 @@ retained owner
     └── bounded ByteString slice
 ```
 
+Every `ByteString`, including a slice, exposes collection indices as
+`0..<count`. The retained owner's storage offset stays internal, so nested
+slicing composes offsets without leaking a parent collection's index space.
+This preserves the original FoundationDB byte-string contract used by storage
+and wire codecs.
+
 Use `withUnsafeBytes` for a synchronous borrow. The pointer must not escape the
 closure. Its `rethrows` contract adds no failure path to nonthrowing work and
 preserves the original failure for throwing work. The borrow does not

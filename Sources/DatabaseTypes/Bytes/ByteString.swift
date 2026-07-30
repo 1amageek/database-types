@@ -18,17 +18,17 @@ public struct ByteString:
     let owner: any ByteStringOwner
 
     @usableFromInline
-    let visibleRange: Range<Int>
+    let storageRange: Range<Int>
 
     public init() {
         self.owner = ArrayByteStringOwner([])
-        self.visibleRange = 0..<0
+        self.storageRange = 0..<0
     }
 
     /// Retains the array's copy-on-write storage.
     public init(_ bytes: [UInt8]) {
         self.owner = ArrayByteStringOwner(bytes)
-        self.visibleRange = 0..<bytes.count
+        self.storageRange = 0..<bytes.count
     }
 
     /// Creates a byte string by allocating and filling its final storage once.
@@ -39,7 +39,7 @@ public struct ByteString:
     /// Retains the slice's copy-on-write storage without materializing bytes.
     public init(_ bytes: ArraySlice<UInt8>) {
         self.owner = ArraySliceByteStringOwner(bytes)
-        self.visibleRange = 0..<bytes.count
+        self.storageRange = 0..<bytes.count
     }
 
     /// Encodes a string directly into final UTF-8 byte storage.
@@ -61,7 +61,7 @@ public struct ByteString:
             precondition(retainedByteCount >= owner.count)
         }
         self.owner = owner
-        self.visibleRange = 0..<owner.count
+        self.storageRange = 0..<owner.count
     }
 
     public init(arrayLiteral elements: UInt8...) {
@@ -70,14 +70,14 @@ public struct ByteString:
 
     private init(
         owner: any ByteStringOwner,
-        visibleRange: Range<Int>
+        storageRange: Range<Int>
     ) {
         precondition(
-            visibleRange.lowerBound >= 0
-                && visibleRange.upperBound <= owner.count
+            storageRange.lowerBound >= 0
+                && storageRange.upperBound <= owner.count
         )
         self.owner = owner
-        self.visibleRange = visibleRange
+        self.storageRange = storageRange
     }
 
     /// Allocates the final byte string storage once.
@@ -139,8 +139,8 @@ public struct ByteString:
         }
     }
 
-    public var startIndex: Int { visibleRange.lowerBound }
-    public var endIndex: Int { visibleRange.upperBound }
+    public var startIndex: Int { 0 }
+    public var endIndex: Int { storageRange.count }
 
     /// The byte count retained by this value's backing owner, when known.
     ///
@@ -160,7 +160,7 @@ public struct ByteString:
     public subscript(position: Int) -> UInt8 {
         precondition(indices.contains(position))
         return withUnsafeBytes { bytes in
-            bytes[position - startIndex]
+            bytes[position]
         }
     }
 
@@ -171,7 +171,11 @@ public struct ByteString:
         )
         return ByteString(
             owner: owner,
-            visibleRange: bounds
+            storageRange: (
+                storageRange.lowerBound + bounds.lowerBound
+            )..<(
+                storageRange.lowerBound + bounds.upperBound
+            )
         )
     }
 
@@ -202,7 +206,7 @@ public struct ByteString:
                 }
                 resultAddress.initialize(to: try body(
                     UnsafeRawBufferPointer(
-                        rebasing: source[visibleRange]
+                        rebasing: source[storageRange]
                     )
                 ))
                 didInitializeResult = true
@@ -239,11 +243,9 @@ public struct ByteString:
         guard !isEmpty else {
             return ByteString()
         }
-        if visibleRange == 0..<owner.count {
-            if owner is ArrayByteStringOwner
-                || owner.retainedByteCount == count {
-                return self
-            }
+        if storageRange == 0..<owner.count,
+           owner.isStorageSelfContained {
+            return self
         }
         return ByteString.copying(count: count) { destination in
             withUnsafeBytes { source in
@@ -353,6 +355,7 @@ private struct ArrayByteStringOwner: ByteStringOwner {
 
     var count: Int { bytes.count }
     var retainedByteCount: Int? { bytes.capacity }
+    var isStorageSelfContained: Bool { true }
 
     func borrowBytes(
         _ body: (UnsafeRawBufferPointer) throws -> Void

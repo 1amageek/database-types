@@ -129,6 +129,13 @@ struct ByteStringTests {
         #expect(valueAddress == ownerAddress)
         #expect(value == [0x10, 0x20, 0x30, 0x40])
         #expect(value.retainedByteCount == owner.count)
+
+        let detachedAddress = try #require(
+            value.detached().withUnsafeBytes { bytes in
+                bytes.baseAddress.map(UInt.init(bitPattern:))
+            }
+        )
+        #expect(detachedAddress == valueAddress)
     }
 
     @Test("Detaching a slice releases its larger owner")
@@ -284,33 +291,25 @@ struct ByteStringTests {
         #expect(!(ByteString([0x01]) < ByteString([0x01])))
     }
 
-    @Test("Slices keep the parent index space so shared indices stay valid")
-    func slicesKeepParentIndexSpace() throws {
+    @Test("Slices rebase indices while retaining the same storage")
+    func slicesRebaseIndicesAndComposeStorageOffsets() throws {
         let value: ByteString = [0x00, 0x01, 0x02, 0x03, 0x04]
         let slice = value[2..<4]
 
-        // A SubSequence must share indices with its base.
-        #expect(slice.startIndex == 2)
-        #expect(slice.endIndex == 4)
-        #expect(slice[2] == 0x02)
-        #expect(slice[3] == 0x03)
+        #expect(slice.startIndex == 0)
+        #expect(slice.endIndex == 2)
+        #expect(slice[0] == 0x02)
+        #expect(slice[1] == 0x03)
 
-        // An index found on the base reads the same element on the slice.
-        let indexOfTwo = try #require(value.firstIndex(of: 0x02))
-        #expect(indexOfTwo == 2)
-        #expect(slice[indexOfTwo] == 0x02)
-
-        // Dropping a prefix does not rebase the remaining indices.
         let dropped = value.dropFirst(3)
-        #expect(dropped.startIndex == 3)
+        #expect(dropped.startIndex == 0)
         let indexOfThree = try #require(dropped.firstIndex(of: 0x03))
-        #expect(indexOfThree == 3)
-        #expect(value[indexOfThree] == 0x03)
+        #expect(indexOfThree == 0)
+        #expect(dropped[indexOfThree] == 0x03)
 
-        // Slicing a slice keeps composing into the original index space.
-        let nested = slice[3..<4]
-        #expect(nested.startIndex == 3)
-        #expect(nested[3] == 0x03)
+        let nested = slice[1..<2]
+        #expect(nested.startIndex == 0)
+        #expect(nested[0] == 0x03)
         #expect(nested == [0x03])
     }
 }
