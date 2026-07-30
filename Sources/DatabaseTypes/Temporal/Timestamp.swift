@@ -6,6 +6,13 @@ public struct Timestamp: Sendable, Hashable, Comparable {
     public let secondsSinceUnixEpoch: Int64
     public let nanoseconds: UInt32
 
+    /// Creates a whole-second timestamp. This representation cannot violate
+    /// the nanosecond invariant and therefore does not fail.
+    public init(secondsSinceUnixEpoch: Int64) {
+        self.secondsSinceUnixEpoch = secondsSinceUnixEpoch
+        self.nanoseconds = 0
+    }
+
     public init(
         secondsSinceUnixEpoch: Int64,
         nanoseconds: UInt32 = 0

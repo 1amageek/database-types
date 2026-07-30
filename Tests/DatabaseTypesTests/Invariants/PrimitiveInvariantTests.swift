@@ -241,12 +241,12 @@ struct PrimitiveInvariantTests {
 
         let vectorAddress = try #require(
             vector.withInt32Elements { buffer in
-                UInt(bitPattern: try #require(buffer.baseAddress))
+                UInt(bitPattern: buffer.baseAddress)
             }
         )
         let detachedAddress = try #require(
             vector.detached().withInt32Elements { buffer in
-                UInt(bitPattern: try #require(buffer.baseAddress))
+                UInt(bitPattern: buffer.baseAddress)
             }
         )
         #expect(detachedAddress == vectorAddress)
