@@ -45,13 +45,11 @@ graph.
 
 ## Installation
 
-The package is in initial development and currently publishes from `main`:
-
 ```swift
 dependencies: [
     .package(
         url: "https://github.com/1amageek/database-types.git",
-        branch: "main"
+        from: "26.0730.0"
     ),
 ]
 ```
